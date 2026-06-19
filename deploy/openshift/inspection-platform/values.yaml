@@ -1,0 +1,151 @@
+# =============================================================================
+# inspection-platform — Helm values (OpenShift / AKS)
+# =============================================================================
+
+# Target platform:
+#   "openshift" → Routes + in-cluster BuildConfig images (default; CRC/ARO)
+#   "aks"       → Ingress + images pulled from an external registry (ACR)
+platform: openshift
+
+# External image registry, used when platform=aks (images are pushed, not built
+# in-cluster), e.g. ACR: "myregistry.azurecr.io/inspection". Leave "" on
+# OpenShift to use the internal registry. Per-image tag comes from build.tag.
+image:
+  registry: ""
+
+# Ingress (platform=aks only). cert-manager issues the cert into tlsSecret.
+ingress:
+  className: nginx
+  annotations: {}
+  clusterIssuer: ""          # cert-manager ClusterIssuer, e.g. letsencrypt-prod
+  tlsSecret: inspection-tls
+
+# Your cluster's apps/base domain. On OpenShift:
+#   oc get ingresses.config/cluster -o jsonpath='{.spec.domain}'
+# On AKS this is your own DNS zone (e.g. inspect.example.com base).
+# REQUIRED unless you set explicit hosts below.
+appsDomain: ""
+
+# Prefix used to derive the three public hostnames from appsDomain:
+#   web   -> <hostPrefix>.<appsDomain>
+#   api   -> <hostPrefix>-api.<appsDomain>
+#   minio -> <hostPrefix>-minio.<appsDomain>
+hostPrefix: inspection
+
+# Optional explicit overrides. If set, they win over the derived values above.
+hosts:
+  web: ""
+  api: ""
+  minio: ""
+
+# -----------------------------------------------------------------------------
+# TLS. By default Routes use OpenShift's edge cert (self-signed on CRC).
+# On a real cluster with cert-manager + the openshift-routes integration, set
+# certManager.enabled=true and point at an existing (Cluster)Issuer to get
+# trusted certs automatically — this removes the self-signed-cert/CA hassle.
+# (No effect on CRC: there's no public domain to issue a trusted cert for.)
+# -----------------------------------------------------------------------------
+tls:
+  certManager:
+    enabled: false
+    issuerName: ""               # e.g. letsencrypt-prod
+    issuerKind: ClusterIssuer    # ClusterIssuer or Issuer
+
+# -----------------------------------------------------------------------------
+# Images: built in-cluster by BuildConfigs into ImageStreams in this namespace.
+# -----------------------------------------------------------------------------
+build:
+  enabled: true            # create ImageStreams + BuildConfigs
+  tag: latest
+
+# -----------------------------------------------------------------------------
+# Secrets. CHANGE THESE before any real deployment. If you manage the Secret
+# out-of-band, set create: false and provide a Secret named <release>-secrets
+# with the same keys.
+# -----------------------------------------------------------------------------
+secrets:
+  create: true
+  jwtSecret: "change_me_jwt_secret"
+  jwtRefreshSecret: "change_me_refresh_secret"
+  jwtExpiresIn: "15m"
+
+postgres:
+  # managed=true → don't deploy in-cluster Postgres; use externalDatabaseUrl
+  # (e.g. Azure Database for PostgreSQL Flexible Server). Append ?sslmode=require.
+  managed: false
+  externalDatabaseUrl: ""   # postgresql://user:pass@host:5432/db?schema=public&sslmode=require
+  image: quay.io/sclorg/postgresql-16-c9s:latest   # arbitrary-UID safe
+  user: ip
+  password: "change_me_db_password"
+  database: inspection
+  storage: 5Gi
+  storageClassName: ""     # "" = cluster default StorageClass (AKS: managed-csi)
+
+minio:
+  image: minio/minio:latest
+  rootUser: minioadmin
+  rootPassword: "change_me_minio_password"
+  bucket: inspection-photos
+  storage: 20Gi
+  storageClassName: ""
+
+redis:
+  # managed=true → don't deploy in-cluster Redis; use external* (e.g. Azure
+  # Cache for Redis: host=<name>.redis.cache.windows.net, port 6380, tls true).
+  managed: false
+  externalHost: ""
+  externalPort: 6380
+  password: ""              # Azure Redis access key (stored in the Secret)
+  tls: false               # true for Azure Cache for Redis
+  image: redis:7-alpine
+  storage: 1Gi
+  storageClassName: ""
+
+# Dev SMTP catcher with a web inbox. Set enabled: false and fill smtp.* below
+# to send through a real mail server in production.
+mailpit:
+  enabled: true
+  image: axllent/mailpit:latest
+
+smtp:
+  host: ""        # leave empty to use the in-cluster mailpit service
+  port: 1025
+  secure: false   # true for implicit TLS on port 465; 587 uses STARTTLS
+  user: ""        # set for a real provider (ACS / SendGrid: "apikey")
+  password: ""    # stored in the Secret
+  from: ""        # e.g. "CHECK House Inspections <reports@yourdomain.com>"
+
+# Application workloads (image pulled from the ImageStream of the same name).
+api:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: "1",  memory: 1Gi }
+
+web:
+  replicas: 1
+  resources:
+    requests: { cpu: 50m,  memory: 128Mi }
+    limits:   { cpu: 500m, memory: 512Mi }
+
+pdf:
+  replicas: 1
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits:   { cpu: "1",  memory: 1Gi }   # Chromium is memory-hungry
+
+# Database migrations (prisma migrate deploy).
+#   job=false → the api container runs migrate on startup (simple; fine for 1
+#               replica / dev / CRC where the image is built after install).
+#   job=true  → a pre-install/pre-upgrade Helm hook Job runs migrate once before
+#               the api rolls out (required for multi-replica api). Needs the api
+#               image to already exist (e.g. pushed to ACR before helm install).
+migrations:
+  job: false
+
+# One-shot DB seed (default admin/inspector accounts + checklist templates).
+# Leave disabled and run it manually once after the first successful build:
+#   oc rsh deploy/<release>-api npx prisma db seed
+# Enabling it creates a Job that retries until the API image + DB are ready.
+seed:
+  enabled: false

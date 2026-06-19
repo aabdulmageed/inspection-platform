@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ip.fullname" . }}-config
+  labels:
+    {{- include "ip.labels" . | nindent 4 }}
+  {{- if .Values.migrations.job }}
+  # Become an early hook so the migrate Job (higher weight) can read it.
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+  {{- end }}
+data:
+  API_PORT: "4000"
+  JWT_EXPIRES_IN: {{ .Values.secrets.jwtExpiresIn | quote }}
+  PDF_SERVICE_URL: {{ printf "http://%s-pdf:4100" (include "ip.fullname" .) | quote }}
+  # Storage: internal endpoint for the API, public HTTPS endpoint for browsers.
+  S3_ENDPOINT: {{ printf "http://%s-minio:9000" (include "ip.fullname" .) | quote }}
+  S3_PUBLIC_URL: {{ printf "https://%s" (include "ip.host.minio" .) | quote }}
+  S3_BUCKET: {{ .Values.minio.bucket | quote }}
+  # Mail
+  SMTP_HOST: {{ .Values.smtp.host | default (printf "%s-mailpit" (include "ip.fullname" .)) | quote }}
+  SMTP_PORT: {{ .Values.smtp.port | quote }}
+  SMTP_SECURE: {{ .Values.smtp.secure | quote }}
+  {{- if .Values.smtp.user }}
+  SMTP_USER: {{ .Values.smtp.user | quote }}
+  {{- end }}
+  {{- if .Values.smtp.from }}
+  MAIL_FROM: {{ .Values.smtp.from | quote }}
+  {{- end }}
+  # Queue
+  {{- if .Values.redis.managed }}
+  REDIS_HOST: {{ required "redis.externalHost is required when redis.managed=true" .Values.redis.externalHost | quote }}
+  REDIS_PORT: {{ .Values.redis.externalPort | quote }}
+  REDIS_TLS: {{ .Values.redis.tls | quote }}
+  {{- else }}
+  REDIS_HOST: {{ printf "%s-redis" (include "ip.fullname" .) | quote }}
+  REDIS_PORT: "6379"
+  REDIS_TLS: "false"
+  {{- end }}
+  # CORS — the web origin that may call the API.
+  WEB_ORIGIN: {{ printf "https://%s" (include "ip.host.web" .) | quote }}

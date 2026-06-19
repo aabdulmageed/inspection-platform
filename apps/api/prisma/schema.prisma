@@ -1,0 +1,230 @@
+// Inspection platform — data model (MVP).
+// Multi-tenant ready (tenantId everywhere); one tenant at launch.
+// Items are owned by a discipline so concurrent offline editing is conflict-free.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  INSPECTOR
+}
+
+enum Discipline {
+  CIVIL
+  ELECTRICAL
+  PLUMBING
+  PEST_OTHER
+}
+
+enum InspectionStatus {
+  DRAFT
+  IN_PROGRESS
+  IN_REVIEW   // all inspectors signed; waiting for manager/admin review
+  COMPLETED   // manager approved & signed
+  REPORTED
+}
+
+enum AssignmentStatus {
+  PENDING
+  IN_PROGRESS
+  SIGNED
+}
+
+enum ItemStatus {
+  GOOD
+  ISSUE
+  NA
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  brandJson Json     @default("{}") // logo url, colors, company name for the report
+  createdAt DateTime @default(now())
+
+  users       User[]
+  clients     Client[]
+  properties  Property[]
+  inspections Inspection[]
+  templates   ChecklistTemplate[]
+}
+
+model User {
+  id         String      @id @default(cuid())
+  tenantId   String
+  role       Role
+  discipline Discipline? // set only for INSPECTOR
+  name       String
+  email      String      @unique
+  passwordHash String
+  createdAt  DateTime    @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  assignments Assignment[]
+
+  @@index([tenantId])
+}
+
+model Client {
+  id       String @id @default(cuid())
+  tenantId String
+  name     String
+  phone    String?
+  email    String?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  properties Property[]
+
+  @@index([tenantId])
+}
+
+model Property {
+  id        String @id @default(cuid())
+  tenantId  String
+  clientId  String
+  address   String
+  type      String
+  latitude  Float?
+  longitude Float?
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  client      Client       @relation(fields: [clientId], references: [id])
+  inspections Inspection[]
+
+  @@index([tenantId])
+}
+
+model Inspection {
+  id          String           @id @default(cuid())
+  tenantId    String
+  propertyId  String
+  type        String
+  status      InspectionStatus @default(DRAFT)
+  scheduledAt DateTime?
+  createdById String
+  createdAt   DateTime         @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  property    Property     @relation(fields: [propertyId], references: [id])
+  assignments    Assignment[]
+  rooms          Room[]
+  signatures     Signature[]
+  reviewComments ReviewComment[]
+  report         Report?
+
+  @@index([tenantId])
+  @@index([propertyId])
+}
+
+model Assignment {
+  id           String           @id @default(cuid())
+  inspectionId String
+  inspectorId  String
+  discipline   Discipline
+  status       AssignmentStatus @default(PENDING)
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  inspector  User       @relation(fields: [inspectorId], references: [id])
+
+  // One engineer per discipline per inspection.
+  @@unique([inspectionId, discipline])
+  @@index([inspectorId])
+}
+
+model Room {
+  id           String @id @default(cuid())
+  inspectionId String
+  name         String
+  order        Int    @default(0)
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+  items      Item[]
+}
+
+model Item {
+  id          String      @id @default(cuid())
+  roomId      String
+  discipline  Discipline  // ownership — only this discipline's inspector may edit
+  component   String
+  status      ItemStatus?
+  note        String?
+  updatedById String?
+  updatedAt   DateTime    @updatedAt
+
+  room   Room    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  photos Photo[]
+
+  @@index([roomId, discipline])
+}
+
+model Photo {
+  id     String @id @default(cuid())
+  itemId String
+  url    String
+  width  Int    @default(0)
+  height Int    @default(0)
+  order  Int    @default(0)
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+model Signature {
+  id           String      @id @default(cuid())
+  inspectionId String
+  discipline   Discipline? // set for inspector signatures
+  isCustomer   Boolean     @default(false) // legacy; customers no longer sign
+  isManager    Boolean     @default(false) // final approval signature
+  imageUrl     String
+  signedAt     DateTime    @default(now())
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+}
+
+model ReviewComment {
+  id           String      @id @default(cuid())
+  inspectionId String
+  authorId     String
+  authorName   String
+  discipline   Discipline? // null = sent back to the whole team
+  text         String
+  createdAt    DateTime    @default(now())
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+
+  @@index([inspectionId])
+}
+
+model ChecklistTemplate {
+  id             String     @id @default(cuid())
+  tenantId       String
+  inspectionType String // e.g. "pre-purchase"
+  discipline     Discipline
+  itemsJson      Json // [{ room: "Bathroom", components: ["Plumbing", ...] }, ...]
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, inspectionType, discipline])
+}
+
+model Report {
+  id           String   @id @default(cuid())
+  inspectionId String   @unique
+  lang         String
+  pdfUrl       String
+  objectKey    String   @default("") // storage key; presigned links are minted from this
+  generatedAt  DateTime @default(now())
+
+  inspection Inspection @relation(fields: [inspectionId], references: [id], onDelete: Cascade)
+}

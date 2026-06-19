@@ -1,0 +1,81 @@
+# =============================================================================
+# AKS production overlay. Use with:
+#   helm upgrade --install inspection ./inspection-platform -n inspection \
+#     -f values-aks.yaml
+# Replace every REPLACE_* below. Prefer passing real secrets via --set or
+# (better) Azure Key Vault + the CSI driver, not committed in this file.
+# =============================================================================
+
+platform: aks
+
+# Images are built + pushed by CI to ACR (not built in-cluster).
+build:
+  enabled: false
+  tag: latest                          # or the git SHA your CI pushed
+image:
+  registry: "REPLACE.azurecr.io/inspection"
+
+# Explicit production hostnames (clean subdomains under gocheckpro.com).
+# NOTE: the web image bakes NEXT_PUBLIC_API_URL=https://api.gocheckpro.com at
+# BUILD time — set that same value as the CI variable NEXT_PUBLIC_API_URL.
+appsDomain: "gocheckpro.com"
+hosts:
+  web: "app.gocheckpro.com"
+  api: "api.gocheckpro.com"
+  minio: "files.gocheckpro.com"
+
+ingress:
+  className: nginx
+  clusterIssuer: letsencrypt-prod      # cert-manager ClusterIssuer (real TLS)
+  tlsSecret: inspection-tls
+
+# Managed Azure data services -------------------------------------------------
+postgres:
+  managed: true
+  # Azure Database for PostgreSQL Flexible Server. Keep sslmode=require.
+  externalDatabaseUrl: "postgresql://REPLACE_USER:REPLACE_PASS@REPLACE.postgres.database.azure.com:5432/inspection?schema=public&sslmode=require"
+
+redis:
+  managed: true
+  externalHost: "REPLACE.redis.cache.windows.net"
+  externalPort: 6380
+  password: "REPLACE_REDIS_ACCESS_KEY"
+  tls: true
+
+# MinIO stays in-cluster on an Azure Disk PVC.
+minio:
+  storageClassName: managed-csi
+  storage: 50Gi
+  rootUser: minioadmin
+  rootPassword: "REPLACE_strong_minio_password"
+
+# Real mail (Azure Communication Services / SendGrid). mailpit off in prod.
+mailpit:
+  enabled: false
+smtp:
+  host: "REPLACE_smtp_host"        # e.g. smtp.azurecomm.net / smtp.sendgrid.net
+  port: 587                         # 587 = STARTTLS (secure:false), 465 = secure:true
+  secure: false
+  user: "REPLACE_smtp_user"        # SendGrid: "apikey"
+  password: "REPLACE_smtp_password"
+  from: "CHECK House Inspections <reports@gocheckpro.com>"
+
+# Production secrets — override via --set or Key Vault.
+secrets:
+  jwtSecret: "REPLACE_strong_random"
+  jwtRefreshSecret: "REPLACE_strong_random"
+
+# Multi-replica api needs migrations run once by a Job (not per-pod on startup).
+migrations:
+  job: true
+
+# HA / scale
+api:
+  replicas: 2
+web:
+  replicas: 2
+pdf:
+  replicas: 1
+
+seed:
+  enabled: false

@@ -1,0 +1,45 @@
+-----BEGIN CERTIFICATE-----
+MIIDDDCCAfSgAwIBAgIBATANBgkqhkiG9w0BAQsFADAmMSQwIgYDVQQDDBtpbmdy
+ZXNzLW9wZXJhdG9yQDE3NjQyMTY0NDMwHhcNMjUxMTI3MDQwNzIyWhcNMjcxMTI3
+MDQwNzIzWjAmMSQwIgYDVQQDDBtpbmdyZXNzLW9wZXJhdG9yQDE3NjQyMTY0NDMw
+ggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDuDqxOsORrhJ3yvHE4VaKW
+/IJnHHLCE4EDAjNqUpJ7zx0tTzA5+vh1x8gnbiQ5MuCGmeXAIEAYJVlOSt8qAYuJ
+pzXRveSd5WKuZ8/I7SdcCXEFdlOCWDB4e0tSY3UDcuoYTxphtgvUK1jtmc8Shpkf
+H144kO/7bMFSRgC06fZGMK6/lEuHKVn/L6iSW458cxUwqmAUxNyvK/3SNBNbHFVe
+citvC0Iytnq+9wqKVOSB7D9M9FnkKBQcX7tJR+egyVZd2DEATCNEnl0flfntY/2E
+p7cI95Y8s9aK13KRBC07aSRb9a7VFaAKnHD2x2muqmVryHLKf1tClkAF8nJOLvgx
+AgMBAAGjRTBDMA4GA1UdDwEB/wQEAwICpDASBgNVHRMBAf8ECDAGAQH/AgEAMB0G
+A1UdDgQWBBR2MyrZXvCBWO/ig3W7TYgezSE8MzANBgkqhkiG9w0BAQsFAAOCAQEA
+sdFzIYvxJBvdGCJ8Rilwr70/B6NWG0gXapUgZ+LDgwbE3zGzmefRVBNhdhulq2h4
+KPeKvajRhhEhfAH4sIRe/yodjGO8D0TPG3LB+9gOhxyjg59znUq4hmI3rPJkmrnK
+5goLA5rq80WW8RRUGCCtsbeMxiyjj2G5fnex5J9crd0SD2E5+qCIB2MNmDcUkWkU
+l2WO71u5HXfIZwRw/HzCI3ASYsQzFqZ9tv8mGpcJSJmPhhD61ahmTi81f8gSCE3b
+dO1xtl+WVaX+BEyz8pJm6PxtAzqE/5Vut75h6HPJaHohJaPNZA797l7GRq2Q67OR
+gADIFAXroXe6bRqKfj1VCA==
+-----END CERTIFICATE-----
+---
+Server certificate
+subject=/CN=*.apps-crc.testing
+issuer=/CN=ingress-operator@1764216443
+---
+No client certificate CA names sent
+Server Temp Key: ECDH, X25519, 253 bits
+---
+SSL handshake has read 2196 bytes and written 391 bytes
+---
+New, TLSv1/SSLv3, Cipher is AEAD-CHACHA20-POLY1305-SHA256
+Server public key is 2048 bit
+Secure Renegotiation IS NOT supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+SSL-Session:
+    Protocol  : TLSv1.3
+    Cipher    : AEAD-CHACHA20-POLY1305-SHA256
+    Session-ID: 
+    Session-ID-ctx: 
+    Master-Key: 
+    Start Time: 1781735069
+    Timeout   : 7200 (sec)
+    Verify return code: 19 (self signed certificate in certificate chain)
+---

@@ -1,0 +1,58 @@
+{{- if eq .Values.platform "aks" }}
+# Single Ingress with a host per service (web / api / minio). cert-manager
+# (cluster-issuer annotation) issues the TLS cert into .Values.ingress.tlsSecret.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ip.fullname" . }}
+  labels:
+    {{- include "ip.labels" . | nindent 4 }}
+  annotations:
+    # Photo uploads go through the minio host — allow large bodies.
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    {{- if .Values.ingress.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer | quote }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  tls:
+    - hosts:
+        - {{ include "ip.host.web" . }}
+        - {{ include "ip.host.api" . }}
+        - {{ include "ip.host.minio" . }}
+      secretName: {{ .Values.ingress.tlsSecret }}
+  rules:
+    - host: {{ include "ip.host.web" . }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ip.fullname" . }}-web
+                port:
+                  number: 3000
+    - host: {{ include "ip.host.api" . }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ip.fullname" . }}-api
+                port:
+                  number: 4000
+    - host: {{ include "ip.host.minio" . }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ip.fullname" . }}-minio
+                port:
+                  number: 9000
+{{- end }}

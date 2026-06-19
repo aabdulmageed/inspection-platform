@@ -1,0 +1,29 @@
+{
+	# Self-signed internal CA (no public domain needed on a LAN).
+	auto_https disable_redirects
+	# Clients don't send SNI for a bare IP, so present this cert by default.
+	default_sni {$PUBLIC_HOST:localhost}
+}
+
+# Web + API on 443. /api/* is proxied to the API (prefix stripped);
+# everything else goes to the Next.js web app.
+https://{$PUBLIC_HOST:localhost}, https://localhost {
+	tls /certs/cert.pem /certs/key.pem
+	handle_path /api/* {
+		reverse_proxy api:4000
+	}
+	# Download the root CA to trust it on phones: https://<ip>/rootCA.pem
+	handle /rootCA.pem {
+		root * /certs
+		file_server
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}
+
+# S3 (MinIO) on 9443 — no path rewrite so presigned signatures stay valid.
+https://{$PUBLIC_HOST:localhost}:9443, https://localhost:9443 {
+	tls /certs/cert.pem /certs/key.pem
+	reverse_proxy minio:9000
+}

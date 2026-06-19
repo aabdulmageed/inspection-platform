@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ip
+          POSTGRES_PASSWORD: ip_dev_password
+          POSTGRES_DB: inspection
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ip"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports: ["9000:9000"]
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+
+    env:
+      DATABASE_URL: postgresql://ip:ip_dev_password@localhost:5432/inspection?schema=public
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET: inspection-photos
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      JWT_SECRET: ci_jwt_secret
+      JWT_REFRESH_SECRET: ci_refresh_secret
+      PUPPETEER_SKIP_DOWNLOAD: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate Prisma client + apply migrations
+        working-directory: apps/api
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: Build all workspaces
+        run: npx turbo run build
+
+      - name: API e2e tests
+        run: npm -w @ip/api run test:e2e
+
+  # Build the three images and push to GHCR, tagged with the git SHA (+ latest).
+  # Only on pushes to main, after tests pass. Deployments can then reference
+  # ghcr.io/<owner>/<repo>/<api|web|pdf>:<sha>.
+  images:
+    needs: build-and-test
+    # Runs only once ACR is configured: set repo variable ACR_LOGIN_SERVER
+    # (e.g. myacr.azurecr.io) + secrets ACR_USERNAME / ACR_PASSWORD.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.ACR_LOGIN_SERVER != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - { name: api, dockerfile: apps/api/Dockerfile }
+          - { name: pdf, dockerfile: services/pdf/Dockerfile }
+          - { name: web, dockerfile: apps/web/Dockerfile }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image base
+        id: img
+        run: echo "base=${{ vars.ACR_LOGIN_SERVER }}/inspection/${{ matrix.name }}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ steps.img.outputs.base }}:latest
+            ${{ steps.img.outputs.base }}:${{ github.sha }}
+          # Only the web image consumes this; api/pdf ignore it (harmless warning).
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:4000' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

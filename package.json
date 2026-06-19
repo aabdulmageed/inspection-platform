@@ -1,0 +1,28 @@
+{
+  "name": "inspection-platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Multi-discipline property inspection management platform (MVP)",
+  "packageManager": "npm@11.6.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "db:up": "docker compose up -d postgres minio",
+    "db:migrate": "npm -w @ip/api run prisma:migrate",
+    "db:seed": "npm -w @ip/api run prisma:seed",
+    "db:studio": "npm -w @ip/api run prisma:studio"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

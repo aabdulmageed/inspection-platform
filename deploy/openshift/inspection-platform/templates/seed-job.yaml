@@ -1,0 +1,30 @@
+{{- if .Values.seed.enabled }}
+# One-shot seed of default accounts + checklist templates. Retries until the
+# API image exists and the DB schema is migrated. Seed data uses unique emails,
+# so run this exactly once (delete the Job before re-enabling).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "ip.fullname" . }}-seed
+  labels:
+    {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: seed
+spec:
+  backoffLimit: 20
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: seed
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed
+          image: {{ include "ip.image" (list "api" .) | quote }}
+          command: ["sh", "-c", "npx prisma migrate deploy && npx prisma db seed"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "ip.fullname" . }}-config
+            - secretRef:
+                name: {{ include "ip.fullname" . }}-secrets
+{{- end }}

@@ -1,0 +1,41 @@
+name: CheckInspections
+options:
+  bundleIdPrefix: test.check
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    GENERATE_INFOPLIST_FILE: NO
+targets:
+  CheckInspections:
+    type: application
+    platform: iOS
+    sources:
+      - path: Sources
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleDisplayName: CHECK
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # Allow the dev API over http on the local network (simulator → Mac).
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+          NSExceptionDomains:
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+        NSCameraUsageDescription: "Take inspection photos."
+        NSPhotoLibraryUsageDescription: "Attach inspection photos."
+        # Required so iOS prompts to allow reaching the API on the local network (192.168.x).
+        NSLocalNetworkUsageDescription: "Connect to the inspection server on your local network."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: test.check.inspections
+        TARGETED_DEVICE_FAMILY: "1"
+        DEVELOPMENT_TEAM: D4XQSQ973F
+        CODE_SIGN_STYLE: Automatic

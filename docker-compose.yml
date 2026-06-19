@@ -1,0 +1,136 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ip}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ip_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-inspection}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ip}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # S3-compatible object storage for inspection photos.
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    volumes:
+      - miniodata:/data
+
+  # Job queue backend (async report generation).
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Dev SMTP server with a web inbox (http://localhost:8025).
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # web UI
+
+  # HTTPS reverse proxy (self-signed) — required for the iOS camera & to avoid
+  # mixed-content. Access the app at https://<PUBLIC_HOST>/.
+  caddy:
+    profiles: ["app"]
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
+    ports:
+      - "443:443"
+      - "9443:9443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+      - caddydata:/data
+    depends_on:
+      - web
+      - api
+      - minio
+
+  # ---- Application services (profile "app") --------------------------------
+  # Start everything:  docker compose --profile app up -d --build
+  # Infra only (for local `npm run dev`):  docker compose up -d postgres minio
+  pdf:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: services/pdf/Dockerfile
+    restart: unless-stopped
+    environment:
+      PDF_PORT: 4100
+
+  api:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      pdf:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-ip}:${POSTGRES_PASSWORD:-ip_dev_password}@postgres:5432/${POSTGRES_DB:-inspection}?schema=public
+      API_PORT: 4000
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_me}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev_refresh_secret_change_me}
+      PDF_SERVICE_URL: http://pdf:4100
+      S3_ENDPOINT: http://minio:9000                                  # internal (container network)
+      S3_PUBLIC_URL: https://${PUBLIC_HOST:-localhost}:9443           # what the browser sees (via Caddy TLS)
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-minioadmin}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-minioadmin}
+      S3_BUCKET: ${S3_BUCKET:-inspection-photos}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      WEB_ORIGIN: https://localhost,https://${PUBLIC_HOST:-localhost},http://localhost:3000,http://${PUBLIC_HOST:-localhost}:3000
+    ports:
+      - "4000:4000"
+
+  web:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://${PUBLIC_HOST:-localhost}/api
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  miniodata:
+  caddydata:

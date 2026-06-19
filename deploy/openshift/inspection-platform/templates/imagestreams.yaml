@@ -1,0 +1,15 @@
+{{- if and .Values.build.enabled (eq .Values.platform "openshift") }}
+{{- range $name := list "api" "web" "pdf" }}
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ip.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  lookupPolicy:
+    local: true
+---
+{{- end }}
+{{- end }}

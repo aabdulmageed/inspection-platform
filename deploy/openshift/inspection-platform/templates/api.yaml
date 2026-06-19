@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ip.fullname" . }}-api
+  labels:
+    {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  {{- if eq .Values.platform "openshift" }}
+  annotations:
+    {{- include "ip.trigger" (list "api" .) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.api.replicas }}
+  strategy:
+    type: Recreate    # single writer of prisma migrations
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: api
+    spec:
+      containers:
+        - name: api
+          image: {{ include "ip.image" (list "api" .) | quote }}
+          {{- if not .Values.migrations.job }}
+          # No migrate Job: run migrations on startup, then serve.
+          command: ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+          {{- end }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "ip.fullname" . }}-config
+            - secretRef:
+                name: {{ include "ip.fullname" . }}-secrets
+          ports:
+            - containerPort: 4000
+          readinessProbe:
+            httpGet:
+              path: /health/ready      # verifies DB connectivity
+              port: 4000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health            # cheap, no dependencies
+              port: 4000
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ip.fullname" . }}-api
+  labels:
+    {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: api
+  ports:
+    - port: 4000
+      targetPort: 4000

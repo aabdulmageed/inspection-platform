@@ -1,0 +1,14 @@
+apiVersion: v2
+name: inspection-platform
+description: >-
+  Multi-discipline property inspection platform (web + API + PDF + Postgres +
+  MinIO + Redis) for OpenShift. In-cluster image builds via BuildConfig,
+  persistent storage via PVCs, public access via Routes.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - openshift
+  - nestjs
+  - nextjs
+  - inspection

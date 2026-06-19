@@ -1,0 +1,68 @@
+{{- if eq .Values.platform "openshift" }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "ip.fullname" . }}-web
+  labels:
+    {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+  {{- if .Values.tls.certManager.enabled }}
+  annotations:
+    {{- include "ip.certManagerAnnotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  host: {{ include "ip.host.web" . }}
+  to:
+    kind: Service
+    name: {{ include "ip.fullname" . }}-web
+  port:
+    targetPort: 3000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "ip.fullname" . }}-api
+  labels:
+    {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  {{- if .Values.tls.certManager.enabled }}
+  annotations:
+    {{- include "ip.certManagerAnnotations" . | nindent 4 }}
+  {{- end }}
+spec:
+  host: {{ include "ip.host.api" . }}
+  to:
+    kind: Service
+    name: {{ include "ip.fullname" . }}-api
+  port:
+    targetPort: 4000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+# Public access to photo objects + presigned uploads. The API signs URLs
+# against S3_PUBLIC_URL (this host), so it must match exactly.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "ip.fullname" . }}-minio
+  labels:
+    {{- include "ip.labels" . | nindent 4 }}
+    app.kubernetes.io/component: minio
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+    {{- include "ip.certManagerAnnotations" . | nindent 4 }}
+spec:
+  host: {{ include "ip.host.minio" . }}
+  to:
+    kind: Service
+    name: {{ include "ip.fullname" . }}-minio
+  port:
+    targetPort: 9000
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+{{- end }}

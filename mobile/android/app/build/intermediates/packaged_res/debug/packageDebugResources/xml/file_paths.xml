@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Camera photos are written to the app cache dir (File.createTempFile). -->
+    <cache-path name="captures" path="." />
+</paths>

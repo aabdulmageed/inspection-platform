@@ -1,0 +1,39 @@
+{{- if and .Values.build.enabled (eq .Values.platform "openshift") }}
+# Binary Docker-strategy builds: upload the repo with
+#   oc start-build <name> --from-dir=. --follow
+# Each build uses the existing Dockerfile and pushes to the ImageStream tag.
+{{- range $name, $dockerfile := dict "api" "apps/api/Dockerfile" "web" "apps/web/Dockerfile" "pdf" "services/pdf/Dockerfile" }}
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "ip.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $name }}
+spec:
+  source:
+    type: Binary
+    binary: {}
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: {{ $dockerfile }}
+      {{- if eq $name "web" }}
+      buildArgs:
+        - name: NEXT_PUBLIC_API_URL
+          value: {{ printf "https://%s" (include "ip.host.api" $) | quote }}
+      {{- end }}
+  output:
+    to:
+      kind: ImageStreamTag
+      name: {{ printf "%s:%s" $name $.Values.build.tag }}
+  resources:
+    requests:        # small request so the build pod fits on a memory-tight node (e.g. CRC)
+      cpu: 250m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 3Gi
+---
+{{- end }}
+{{- end }}

@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+/* Class-based dark mode (next-themes toggles `.dark` on <html>). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---- Semantic tokens, mapped into Tailwind color utilities ---- */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+
+  --color-navy: #134486;
+  --color-green: #39b045;
+  --color-teal: #1f6fa0;
+  --color-good: var(--good);
+  --color-issue: var(--issue);
+
+  --radius-card: 14px;
+}
+
+:root {
+  --bg: #f3f6fa;
+  --surface: #ffffff;
+  --surface-2: #eef2f7;
+  --fg: #16202c;
+  --muted: #5e6e7e;
+  --line: #e3e8ef;
+  --good: #2e9e3f;
+  --issue: #c0392b;
+  --brand-gradient: linear-gradient(115deg, #1c5fb0 0%, #2f93b8 52%, #46c85d 100%);
+  --logo-glow: drop-shadow(0 0 5px rgba(90, 205, 255, 0.75)) drop-shadow(0 0 12px rgba(70, 200, 95, 0.55));
+  --shadow-card: 0 1px 2px rgba(16, 32, 52, 0.06), 0 4px 16px rgba(16, 32, 52, 0.04);
+}
+
+.dark {
+  --bg: #0c121b;
+  --surface: #141d28;
+  --surface-2: #1c2836;
+  --fg: #e7eef6;
+  --muted: #93a6b8;
+  --line: #243240;
+  --good: #43c463;
+  --issue: #e5675a;
+  --brand-gradient: linear-gradient(115deg, #0c2c5e 0%, #135071 52%, #228a3f 100%);
+  --logo-glow: drop-shadow(0 0 6px rgba(95, 215, 255, 0.9)) drop-shadow(0 0 16px rgba(75, 220, 100, 0.7));
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* ---- Custom utilities ---- */
+@utility bg-brand-gradient {
+  background-image: var(--brand-gradient);
+}
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility logo-glow {
+  filter: var(--logo-glow);
+}
+
+/* ---- Base ---- */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-latin), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+html[dir="rtl"] body {
+  font-family: var(--font-arabic), var(--font-latin), sans-serif;
+}
+* {
+  border-color: var(--line);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

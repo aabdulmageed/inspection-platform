@@ -1,0 +1,30 @@
+
+inspection-platform installed as release "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+PUBLIC URLs (once builds finish and pods are Ready):
+  Web    https://{{ include "ip.host.web" . }}
+  API    https://{{ include "ip.host.api" . }}
+  MinIO  https://{{ include "ip.host.minio" . }}   (photo objects + presigned uploads)
+
+{{- if .Values.build.enabled }}
+
+NEXT — trigger the in-cluster image builds from the repo root:
+
+  EXCLUDE='(^|/)(node_modules|\.next|\.turbo|dist|\.git)(/|$)'
+  oc start-build api --from-dir=. --exclude="$EXCLUDE" --follow
+  oc start-build pdf --from-dir=. --exclude="$EXCLUDE" --follow
+  oc start-build web --from-dir=. --exclude="$EXCLUDE" --follow
+
+The Deployments have image triggers, so they roll out automatically when each
+build completes.
+{{- end }}
+
+FIRST-RUN SEED (default accounts + checklist templates) — run once after the
+api pod is Ready:
+
+  oc rsh deploy/{{ include "ip.fullname" . }}-api npx prisma db seed
+
+  Login:  admin@check.test / password123   (inspector: civil@check.test)
+
+CHECK STATUS:
+  oc get pods,routes,builds -l app.kubernetes.io/instance={{ .Release.Name }}
