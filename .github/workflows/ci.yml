@@ -22,12 +22,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-      minio:
-        image: bitnami/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports: ["9000:9000"]
       redis:
         image: redis:7-alpine
         ports: ["6379:6379"]
@@ -46,6 +40,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      # MinIO as a step (not a service): the official image needs a `server`
+      # command, which service containers can't pass. (Bitnami's free images
+      # were deprecated in 2025.)
+      - name: Start MinIO (S3-compatible storage)
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin \
+            minio/minio server /data
 
       - uses: actions/setup-node@v4
         with:
