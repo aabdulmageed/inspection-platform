@@ -5,6 +5,7 @@ dist/
 *.log
 .env
 .env.local
+.env.azure-provision
 coverage/
 # Prisma
 apps/api/prisma/migrations/dev.db*
