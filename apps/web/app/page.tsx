@@ -140,8 +140,8 @@ export default function Dashboard() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="font-bold truncate">{i.property.client.name}</div>
-                      <div className="text-muted text-sm flex items-center gap-1 mt-0.5">
-                        <MapPin size={13} /> <span className="truncate">{i.property.address}</span>
+                      <div className="text-muted text-sm flex items-center gap-1 mt-0.5 min-w-0">
+                        <MapPin size={13} className="shrink-0" /> <span className="truncate">{i.property.address}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">

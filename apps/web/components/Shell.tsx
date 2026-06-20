@@ -147,7 +147,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
-        <main className="flex-1 p-5 md:p-8 w-full max-w-5xl mx-auto">{children}</main>
+        <main className="flex-1 p-5 md:p-8 w-full max-w-5xl mx-auto overflow-x-hidden">{children}</main>
       </div>
     </div>
   );

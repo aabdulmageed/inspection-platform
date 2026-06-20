@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "NEXT_PUBLIC_API_URL=https://api.gocheckpro.com npm run dev -w @ip/web"],
+      "port": 3000
+    }
+  ]
+}
