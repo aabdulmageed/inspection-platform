@@ -59,7 +59,7 @@ fun NewInspectionScreen(backend: Backend, onAssign: (String) -> Unit, onBack: ()
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text("New Inspection") },
+            title = { Text(tr("New Inspection")) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
             actions = {
                 TextButton(enabled = valid && !busy, onClick = {
@@ -77,7 +77,7 @@ fun NewInspectionScreen(backend: Backend, onAssign: (String) -> Unit, onBack: ()
                         } catch (e: Exception) { error = "Couldn't create the draft." }
                         busy = false
                     }
-                }) { Text(if (busy) "…" else "Next") }
+                }) { Text(if (busy) "…" else tr("Next")) }
             }
         )
     }) { pad ->
@@ -85,22 +85,22 @@ fun NewInspectionScreen(backend: Backend, onAssign: (String) -> Unit, onBack: ()
             Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("Customer", fontWeight = FontWeight.Bold)
-            OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(phone, { phone = it }, label = { Text("Phone") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Text(tr("Customer"), fontWeight = FontWeight.Bold)
+            OutlinedTextField(name, { name = it }, label = { Text(tr("Name")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(phone, { phone = it }, label = { Text(tr("Phone")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(email, { email = it }, label = { Text(tr("Email")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
             Spacer(Modifier.height(4.dp))
-            Text("Property", fontWeight = FontWeight.Bold)
-            OutlinedTextField(address, { address = it }, label = { Text("Address") }, modifier = Modifier.fillMaxWidth())
+            Text(tr("Property"), fontWeight = FontWeight.Bold)
+            OutlinedTextField(address, { address = it }, label = { Text(tr("Address")) }, modifier = Modifier.fillMaxWidth())
             OutlinedButton(onClick = { showMap = true }, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.LocationOn, null); Spacer(Modifier.width(6.dp))
-                Text(if (coords == null) "Pick on map" else "Change location")
+                Text(if (coords == null) tr("Pick on map") else tr("Change location"))
             }
-            coords?.let { Text("📍 %.5f, %.5f".format(it.first, it.second), color = Color.Gray, style = MaterialTheme.typography.bodySmall) }
+            coords?.let { Text(tr("📍 %.5f, %.5f").format(it.first, it.second), color = Color.Gray, style = MaterialTheme.typography.bodySmall) }
 
             EnumDropdown("Type", PROPERTY_TYPES, propertyType, ::propertyTypeLabel) { propertyType = it }
-            OutlinedTextField(inspectionType, { inspectionType = it }, label = { Text("Inspection type") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(inspectionType, { inspectionType = it }, label = { Text(tr("Inspection type")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = IssueRed, style = MaterialTheme.typography.bodySmall) }
         }
     }
@@ -141,12 +141,12 @@ fun MapPicker(initial: Pair<Double, Double>, onPick: (Double, Double) -> Unit, o
         }
         Surface(tonalElevation = 3.dp) {
             Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Tap the map to drop a pin", color = Color.Gray, style = MaterialTheme.typography.bodySmall)
-                Text("📍 %.5f, %.5f".format(lat, lng), fontWeight = FontWeight.SemiBold)
+                Text(tr("Tap the map to drop a pin"), color = Color.Gray, style = MaterialTheme.typography.bodySmall)
+                Text(tr("📍 %.5f, %.5f").format(lat, lng), fontWeight = FontWeight.SemiBold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = onClose) { Text("Cancel") }
+                    TextButton(onClick = onClose) { Text(tr("Cancel")) }
                     Spacer(Modifier.weight(1f))
-                    Button(onClick = { onPick(lat, lng) }) { Text("Use this location") }
+                    Button(onClick = { onPick(lat, lng) }) { Text(tr("Use this location")) }
                 }
             }
         }
@@ -171,7 +171,7 @@ fun AssignTeamScreen(backend: Backend, id: String, onDone: () -> Unit, onBack: (
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text("Assign Team") },
+            title = { Text(tr("Assign Team")) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
             actions = {
                 TextButton(enabled = !busy, onClick = {
@@ -185,7 +185,7 @@ fun AssignTeamScreen(backend: Backend, id: String, onDone: () -> Unit, onBack: (
                         } catch (e: Exception) { error = "Couldn't save the assignment." }
                         busy = false
                     }
-                }) { Text(if (busy) "Saving…" else "Save") }
+                }) { Text(if (busy) tr("Saving…") else tr("Save")) }
             }
         )
     }) { pad ->
@@ -193,15 +193,15 @@ fun AssignTeamScreen(backend: Backend, id: String, onDone: () -> Unit, onBack: (
             Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("Schedule", fontWeight = FontWeight.Bold)
-            OutlinedTextField(date, { date = it }, label = { Text("Date (YYYY-MM-DD)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Text(tr("Schedule"), fontWeight = FontWeight.Bold)
+            OutlinedTextField(date, { date = it }, label = { Text(tr("Date (YYYY-MM-DD)")) }, singleLine = true, modifier = Modifier.fillMaxWidth())
 
-            Text("Assign inspectors", fontWeight = FontWeight.Bold)
+            Text(tr("Assign inspectors"), fontWeight = FontWeight.Bold)
             DISCIPLINES.forEach { d ->
                 val options = inspectors.filter { it.discipline == d }
                 InspectorDropdown(disciplineLabel(d), options, picked[d]) { picked[d] = it ?: "" }
             }
-            Text("Pick an inspector for each discipline you need. Leave others empty.",
+            Text(tr("Pick an inspector for each discipline you need. Leave others empty."),
                 color = Color.Gray, style = MaterialTheme.typography.bodySmall)
             error?.let { Text(it, color = IssueRed, style = MaterialTheme.typography.bodySmall) }
         }
@@ -230,7 +230,7 @@ fun UsersScreen(backend: Backend, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Team") },
+                title = { Text(tr("Team")) },
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } },
                 actions = { if (canAdd) IconButton(onClick = { showAdd = true }) { Icon(Icons.Default.PersonAdd, "Add user") } }
             )
@@ -284,12 +284,12 @@ private fun AddUserDialog(backend: Backend, onDismiss: () -> Unit, onCreated: ()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add User") },
+        title = { Text(tr("Add User")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true)
-                OutlinedTextField(email, { email = it }, label = { Text("Email") }, singleLine = true)
-                OutlinedTextField(password, { password = it }, label = { Text("Password (min 6)") }, singleLine = true)
+                OutlinedTextField(name, { name = it }, label = { Text(tr("Name")) }, singleLine = true)
+                OutlinedTextField(email, { email = it }, label = { Text(tr("Email")) }, singleLine = true)
+                OutlinedTextField(password, { password = it }, label = { Text(tr("Password (min 6)")) }, singleLine = true)
                 EnumDropdown("Role", listOf("INSPECTOR", "MANAGER", "ADMIN"), role,
                     { it.lowercase().replaceFirstChar { c -> c.uppercase() } }) { role = it }
                 if (role == "INSPECTOR") {
@@ -309,9 +309,9 @@ private fun AddUserDialog(backend: Backend, onDismiss: () -> Unit, onCreated: ()
                     } catch (e: Exception) { error = "Couldn't create the user." }
                     busy = false
                 }
-            }) { Text(if (busy) "…" else "Create") }
+            }) { Text(if (busy) "…" else tr("Create")) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancel")) } }
     )
 }
 
@@ -347,7 +347,7 @@ private fun InspectorDropdown(label: String, options: List<UserRef>, selectedId:
             modifier = Modifier.menuAnchor().fillMaxWidth()
         )
         ExposedDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text("— none —") }, onClick = { onSelect(null); open = false })
+            DropdownMenuItem(text = { Text(tr("— none —")) }, onClick = { onSelect(null); open = false })
             options.forEach { u ->
                 DropdownMenuItem(text = { Text(u.name) }, onClick = { onSelect(u.id); open = false })
             }

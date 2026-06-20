@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var auth: AuthStore
+    @EnvironmentObject var loc: Loc
     @State private var path: [String] = []
     @State private var showNew = false
     @State private var showUsers = false
@@ -33,7 +34,8 @@ struct HomeView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Text(auth.user?.name ?? "")
-                        Button("Log out", role: .destructive) { auth.logout() }
+                        LanguageToggle()
+                        Button(loc.t("Log out"), role: .destructive) { auth.logout() }
                     } label: { Image(systemName: "person.crop.circle") }
                 }
             }
@@ -45,7 +47,7 @@ struct HomeView: View {
                     UsersView()
                         .toolbar {
                             ToolbarItem(placement: .topBarLeading) {
-                                Button("Done") { showUsers = false }
+                                Button(loc.t("Done")) { showUsers = false }
                             }
                         }
                 }
@@ -57,6 +59,7 @@ struct HomeView: View {
 /// Thin status strip: shows when offline and/or when writes are waiting to sync.
 struct SyncBanner: View {
     @EnvironmentObject var auth: AuthStore
+    @EnvironmentObject var loc: Loc
     var body: some View {
         if !auth.online || auth.pendingCount > 0 {
             HStack(spacing: 8) {
@@ -64,7 +67,7 @@ struct SyncBanner: View {
                 Text(bannerText).font(.caption.bold())
                 Spacer()
                 if auth.online && auth.pendingCount > 0 {
-                    Button("Sync now") { Task { await auth.flushOutbox() } }.font(.caption.bold())
+                    Button(loc.t("Sync now")) { Task { await auth.flushOutbox() } }.font(.caption.bold())
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 6)
@@ -75,10 +78,10 @@ struct SyncBanner: View {
     private var bannerText: String {
         if !auth.online {
             return auth.pendingCount > 0
-                ? "Offline · \(auth.pendingCount) change\(auth.pendingCount == 1 ? "" : "s") will sync"
-                : "Offline · showing saved data"
+                ? "\(loc.t("Offline")) · \(auth.pendingCount) \(loc.t("pending"))"
+                : loc.t("Offline · showing saved data")
         }
-        return "Syncing \(auth.pendingCount) pending change\(auth.pendingCount == 1 ? "" : "s")…"
+        return "\(loc.t("Syncing…")) (\(auth.pendingCount))"
     }
 }
 
@@ -86,6 +89,7 @@ struct SyncBanner: View {
 
 struct MyDayView: View {
     @EnvironmentObject var auth: AuthStore
+    @EnvironmentObject var loc: Loc
     @State private var date = Date()
     @State private var jobs: [InspectionSummary] = []
     @State private var loading = true
@@ -98,20 +102,20 @@ struct MyDayView: View {
     var body: some View {
         List {
             Section {
-                DatePicker("Date", selection: $date, displayedComponents: .date)
+                DatePicker(loc.t("Date"), selection: $date, displayedComponents: .date)
                     .onChange(of: date) { _, _ in Task { await load() } }
             }
             if loading {
                 ProgressView()
             } else if jobs.isEmpty {
-                Text("No jobs scheduled for this day.").foregroundStyle(.secondary)
+                Text(loc.t("No jobs scheduled for this day.")).foregroundStyle(.secondary)
             } else {
                 ForEach(jobs) { job in
                     NavigationLink(value: job.id) { JobRow(job: job) }
                 }
             }
         }
-        .navigationTitle("My Day")
+        .navigationTitle(loc.t("My Day"))
         .navigationDestination(for: String.self) { InspectionDetailView(inspectionId: $0) }
         .task { await load() }
     }
@@ -127,16 +131,17 @@ struct MyDayView: View {
 
 struct ReportsView: View {
     @EnvironmentObject var auth: AuthStore
+    @EnvironmentObject var loc: Loc
     @State private var items: [InspectionSummary] = []
     @State private var loading = true
 
     var body: some View {
         List {
             if loading { ProgressView() }
-            else if items.isEmpty { Text("No inspections yet.").foregroundStyle(.secondary) }
+            else if items.isEmpty { Text(loc.t("No inspections yet.")).foregroundStyle(.secondary) }
             else { ForEach(items) { job in NavigationLink(value: job.id) { JobRow(job: job) } } }
         }
-        .navigationTitle("Inspections")
+        .navigationTitle(loc.t("Inspections"))
         .navigationDestination(for: String.self) { InspectionDetailView(inspectionId: $0) }
         .task {
             items = (try? await auth.inspections()) ?? []
@@ -147,18 +152,19 @@ struct ReportsView: View {
 
 struct JobRow: View {
     let job: InspectionSummary
+    @EnvironmentObject var loc: Loc
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Text(job.property.client.name).font(.headline)
                 Spacer()
-                StatusPill(text: statusLabel(job.myStatus ?? job.status),
+                StatusPill(text: loc.t(statusLabel(job.myStatus ?? job.status)),
                            tone: (job.myStatus ?? job.status) == "SIGNED" ? .good : .brand)
             }
             Label(job.property.address, systemImage: "mappin.and.ellipse")
                 .font(.subheadline).foregroundStyle(.secondary)
             if !job.assignments.isEmpty {
-                Text(job.assignments.map { disciplineLabel($0.discipline) }.joined(separator: " · "))
+                Text(job.assignments.map { loc.t(disciplineLabel($0.discipline)) }.joined(separator: " · "))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }.padding(.vertical, 2)

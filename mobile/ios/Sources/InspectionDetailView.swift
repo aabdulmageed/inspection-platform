@@ -4,6 +4,7 @@ import PhotosUI
 struct InspectionDetailView: View {
     let inspectionId: String
     @EnvironmentObject var auth: AuthStore
+    @EnvironmentObject var loc: Loc
     @State private var detail: InspectionDetail?
     @State private var activeRoomId: String?
     @State private var signing = false
@@ -44,11 +45,11 @@ struct InspectionDetailView: View {
                 ProgressView()
             }
         }
-        .navigationTitle("Inspection")
+        .navigationTitle(loc.t("Inspection"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .sheet(isPresented: $signing) {
-            SignatureView(title: "Sign") { uri in Task { await sign(uri) } }
+            SignatureView(title: loc.t("Sign")) { uri in Task { await sign(uri) } }
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { data in
@@ -84,18 +85,18 @@ struct InspectionDetailView: View {
                 HStack {
                     Text(d.property.client.name).font(.title3.bold())
                     Spacer()
-                    StatusPill(text: statusLabel(d.status))
+                    StatusPill(text: loc.t(statusLabel(d.status)))
                 }
                 Label(d.property.address, systemImage: "mappin.and.ellipse")
                     .font(.subheadline).foregroundStyle(.secondary)
                 if locked {
-                    Label("Approved & locked", systemImage: "lock.fill")
+                    Label(loc.t("Approved & locked"), systemImage: "lock.fill")
                         .font(.caption.bold()).foregroundStyle(Color.good)
                 }
             }
             // Room picker
             if !visibleRooms.isEmpty {
-                Picker("Room", selection: Binding(get: { activeRoom?.id ?? "" }, set: { activeRoomId = $0 })) {
+                Picker(loc.t("Room"), selection: Binding(get: { activeRoom?.id ?? "" }, set: { activeRoomId = $0 })) {
                     ForEach(visibleRooms) { Text($0.name).tag($0.id) }
                 }.pickerStyle(.menu)
             }
@@ -114,21 +115,21 @@ struct InspectionDetailView: View {
             HStack {
                 VStack(alignment: .leading) {
                     Text(item.component).font(.subheadline.bold())
-                    Text(disciplineLabel(item.discipline)).font(.caption2).foregroundStyle(.secondary)
+                    Text(loc.t(disciplineLabel(item.discipline))).font(.caption2).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Menu {
                     ForEach(["", "GOOD", "ISSUE", "NA"], id: \.self) { s in
-                        Button(s.isEmpty ? "—" : statusLabelItem(s)) { Task { await setStatus(item, s) } }
+                        Button(s.isEmpty ? "—" : loc.t(statusLabelItem(s))) { Task { await setStatus(item, s) } }
                     }
                 } label: {
-                    Text(item.status.map(statusLabelItem) ?? "—")
+                    Text(item.status.map { loc.t(statusLabelItem($0)) } ?? "—")
                         .font(.caption.bold())
                         .foregroundStyle(item.status == "ISSUE" ? Color.issue : item.status == "GOOD" ? Color.good : Color.primary)
                 }.disabled(!editable)
             }
             if editable {
-                TextField("Add a note…", text: Binding(
+                TextField(loc.t("Add a note…"), text: Binding(
                     get: { item.note ?? "" },
                     set: { newVal in updateLocalNote(item.id, newVal) }
                 ), onCommit: { Task { await saveNote(item) } })
@@ -160,10 +161,10 @@ struct InspectionDetailView: View {
                     Button {
                         cameraTargetItemId = item.id; showCamera = true
                     } label: {
-                        Label("Take photo", systemImage: "camera.fill").font(.caption.bold())
+                        Label(loc.t("Take photo"), systemImage: "camera.fill").font(.caption.bold())
                     }.buttonStyle(.plain).foregroundStyle(Color.brandNavy)
                     PhotosPicker(selection: $photoItem, matching: .images) {
-                        Label("Choose photo", systemImage: "photo.on.rectangle").font(.caption.bold())
+                        Label(loc.t("Choose photo"), systemImage: "photo.on.rectangle").font(.caption.bold())
                     }.simultaneousGesture(TapGesture().onEnded { photoTargetItemId = item.id })
                 }
             }
@@ -171,34 +172,34 @@ struct InspectionDetailView: View {
     }
 
     @ViewBuilder private func signaturesSection(_ d: InspectionDetail) -> some View {
-        Section("Signatures") {
+        Section(loc.t("Signatures")) {
             ForEach(d.assignments) { a in
                 let sig = d.signatures.first { $0.discipline == a.discipline }
                 HStack {
                     VStack(alignment: .leading) {
-                        Text(disciplineLabel(a.discipline)).font(.subheadline.bold())
+                        Text(loc.t(disciplineLabel(a.discipline))).font(.subheadline.bold())
                         Text(a.inspector.name).font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                     if sig != nil {
                         Image(systemName: "checkmark.seal.fill").foregroundStyle(Color.good)
                     } else if isInspector && auth.user?.discipline == a.discipline && !locked {
-                        Button("Sign") { signing = true }.buttonStyle(.borderedProminent).tint(.brandNavy)
+                        Button(loc.t("Sign")) { signing = true }.buttonStyle(.borderedProminent).tint(.brandNavy)
                     } else {
-                        StatusPill(text: statusLabel(a.status), tone: .neutral)
+                        StatusPill(text: loc.t(statusLabel(a.status)), tone: .neutral)
                     }
                 }
             }
             // Manager / admin approval
             HStack {
-                Text("Manager approval").font(.subheadline.bold())
+                Text(loc.t("Manager approval")).font(.subheadline.bold())
                 Spacer()
                 if d.signatures.contains(where: { $0.isManager }) {
                     Image(systemName: "checkmark.seal.fill").foregroundStyle(Color.good)
                 } else if canApprove {
-                    Button("Approve & sign") { signing = true }.buttonStyle(.borderedProminent).tint(.brandNavy)
+                    Button(loc.t("Approve & sign")) { signing = true }.buttonStyle(.borderedProminent).tint(.brandNavy)
                 } else {
-                    StatusPill(text: statusLabel(d.status), tone: .neutral)
+                    StatusPill(text: loc.t(statusLabel(d.status)), tone: .neutral)
                 }
             }
         }

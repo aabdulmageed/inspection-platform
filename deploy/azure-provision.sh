@@ -88,7 +88,8 @@ echo "==> Cluster add-ons: ingress-nginx + cert-manager"
 "$HELM_BIN" repo add jetstack https://charts.jetstack.io >/dev/null 2>&1 || true
 "$HELM_BIN" repo update >/dev/null
 "$HELM_BIN" upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
-  -n ingress-nginx --create-namespace --wait
+  -n ingress-nginx --create-namespace --wait \
+  --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz
 "$HELM_BIN" upgrade --install cert-manager jetstack/cert-manager \
   -n cert-manager --create-namespace --set crds.enabled=true --wait
 

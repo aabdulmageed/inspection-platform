@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -35,8 +36,18 @@ fun createCameraUri(context: Context): Uri {
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
 }
 
-fun decodeBitmap(context: Context, uri: Uri): Bitmap? =
-    context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+/** Decode and downscale to a max edge so drawing stays smooth and uploads stay small.
+ *  Full-res camera photos (12 MP+) make the annotate canvas lag badly. */
+fun decodeBitmap(context: Context, uri: Uri): Bitmap? {
+    val raw = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) } ?: return null
+    val maxEdge = 1600
+    val longest = maxOf(raw.width, raw.height)
+    if (longest <= maxEdge) return raw
+    val scale = maxEdge.toFloat() / longest
+    val scaled = Bitmap.createScaledBitmap(raw, (raw.width * scale).toInt(), (raw.height * scale).toInt(), true)
+    if (scaled != raw) raw.recycle()
+    return scaled
+}
 
 fun bitmapToPart(bmp: Bitmap): MultipartBody.Part {
     val out = ByteArrayOutputStream()
@@ -51,28 +62,40 @@ fun bitmapToPart(bmp: Bitmap): MultipartBody.Part {
  */
 @Composable
 fun AnnotateOverlay(bitmap: Bitmap, onCancel: () -> Unit, onSave: (Bitmap) -> Unit) {
-    val strokes = remember { mutableStateListOf<MutableList<Offset>>() }
+    // Inner lists are SnapshotStateList so adding points during a drag triggers
+    // the Canvas to redraw live (a plain MutableList isn't observed by Compose).
+    val strokes = remember { mutableStateListOf<androidx.compose.runtime.snapshots.SnapshotStateList<Offset>>() }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     val ratio = bitmap.width.toFloat() / bitmap.height.toFloat()
 
-    Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(color = Color.Black, modifier = Modifier.fillMaxSize()) {
-            Column(Modifier.fillMaxSize()) {
-                Box(
+    // Full-screen overlay (not a Dialog — dialogs aren't reliably full-screen on
+    // Android, which cut off the buttons). systemBarsPadding keeps the bottom row
+    // above the nav bar.
+    Box(Modifier.fillMaxSize().background(Color.Black).systemBarsPadding()) {
+        Column(Modifier.fillMaxSize()) {
+                BoxWithConstraints(
                     Modifier.fillMaxWidth().weight(1f).padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Box(Modifier.fillMaxWidth().aspectRatio(ratio)) {
+                    val density = LocalDensity.current
+                    val maxWpx = with(density) { maxWidth.toPx() }
+                    val maxHpx = with(density) { maxHeight.toPx() }
+                    // Fit the bitmap inside the available area, preserving its ratio.
+                    val dispW = if (maxWpx / maxHpx > ratio) maxHpx * ratio else maxWpx
+                    val dispH = if (maxWpx / maxHpx > ratio) maxHpx else maxWpx / ratio
+                    // The image box is sized to the EXACT displayed rect, so the
+                    // drawing canvas overlays the photo 1:1 (no letterbox drift).
+                    Box(Modifier.size(with(density) { dispW.toDp() }, with(density) { dispH.toDp() })) {
                         androidx.compose.foundation.Image(
                             bitmap = bitmap.asImageBitmap(), contentDescription = null,
-                            contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize()
+                            contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize()
                         )
                         Canvas(
                             Modifier.fillMaxSize()
                                 .onSizeChanged { canvasSize = it }
                                 .pointerInput(Unit) {
                                     detectDragGestures(
-                                        onDragStart = { strokes.add(mutableListOf(it)) },
+                                        onDragStart = { strokes.add(mutableStateListOf(it)) },
                                         onDrag = { change, _ -> strokes.lastOrNull()?.add(change.position); change.consume() }
                                     )
                                 }
@@ -85,25 +108,27 @@ fun AnnotateOverlay(bitmap: Bitmap, onCancel: () -> Unit, onSave: (Bitmap) -> Un
                 }
                 Row(Modifier.fillMaxWidth().background(Color(0xFF1A1A1A)).padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(onClick = { strokes.clear() }) { Text("Clear", color = Color.White) }
+                    TextButton(onClick = { strokes.clear() }) { Text(tr("Clear"), color = Color.White) }
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onCancel) { Text("Cancel", color = Color.White) }
-                    Button(onClick = { onSave(flatten(bitmap, strokes, canvasSize)) }) { Text("Use photo") }
+                    TextButton(onClick = onCancel) { Text(tr("Cancel"), color = Color.White) }
+                    Button(onClick = { onSave(flatten(bitmap, strokes, canvasSize)) }) { Text(tr("Use photo")) }
                 }
             }
         }
-    }
 }
 
 /** Bake the on-screen strokes (canvas coords) onto a copy of the original bitmap. */
 private fun flatten(src: Bitmap, strokes: List<List<Offset>>, canvas: IntSize): Bitmap {
     val out = src.copy(Bitmap.Config.ARGB_8888, true)
     if (canvas.width == 0 || canvas.height == 0) return out
-    val scale = out.width.toFloat() / canvas.width.toFloat()
+    // Independent X/Y scales: maps canvas coords → bitmap coords correctly even
+    // if the canvas isn't a perfect ratio match.
+    val sx = out.width.toFloat() / canvas.width.toFloat()
+    val sy = out.height.toFloat() / canvas.height.toFloat()
     val c = android.graphics.Canvas(out)
     val paint = android.graphics.Paint().apply {
         color = android.graphics.Color.RED
-        strokeWidth = 10f * scale
+        strokeWidth = 10f * sx
         isAntiAlias = true
         style = android.graphics.Paint.Style.STROKE
         strokeCap = android.graphics.Paint.Cap.ROUND
@@ -111,7 +136,7 @@ private fun flatten(src: Bitmap, strokes: List<List<Offset>>, canvas: IntSize): 
     }
     strokes.forEach { s ->
         for (i in 1 until s.size) {
-            c.drawLine(s[i - 1].x * scale, s[i - 1].y * scale, s[i].x * scale, s[i].y * scale, paint)
+            c.drawLine(s[i - 1].x * sx, s[i - 1].y * sy, s[i].x * sx, s[i].y * sy, paint)
         }
     }
     return out

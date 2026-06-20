@@ -35,19 +35,37 @@ val Navy = Color(0xFF134486)
 val Green = Color(0xFF39B045)
 val IssueRed = Color(0xFFC0392B)
 
-fun brandColors() = lightColorScheme(primary = Navy, secondary = Green)
+// Fully specify the scheme so Material 3 doesn't tint surfaces purple — neutral
+// greys + brand accents, matching the iOS look.
+fun brandColors() = lightColorScheme(
+    primary = Navy,
+    onPrimary = Color.White,
+    secondary = Green,
+    onSecondary = Color.White,
+    background = Color(0xFFF2F3F5),          // ~ iOS systemGroupedBackground
+    onBackground = Color(0xFF1A1A1A),
+    surface = Color.White,
+    onSurface = Color(0xFF1A1A1A),
+    surfaceVariant = Color(0xFFECEEF1),      // neutral card / field background
+    onSurfaceVariant = Color(0xFF45484C),
+    secondaryContainer = Color(0xFFD8E6FB),  // selected chip: light navy (not purple)
+    onSecondaryContainer = Navy,
+    outline = Color(0xFFC4C8CD),
+    error = IssueRed,
+    onError = Color.White,
+)
 
 internal val DISCIPLINES = listOf("CIVIL", "ELECTRICAL", "PLUMBING", "PEST_OTHER")
 internal val PROPERTY_TYPES = listOf("APARTMENT", "HOUSE")
-internal fun propertyTypeLabel(t: String) = when (t) { "APARTMENT" -> "Apartment"; "HOUSE" -> "House"; else -> t }
+internal fun propertyTypeLabel(t: String) = Loc.str(when (t) { "APARTMENT" -> "Apartment"; "HOUSE" -> "House"; else -> t })
 
-internal fun disciplineLabel(d: String) = when (d) {
+internal fun disciplineLabel(d: String) = Loc.str(when (d) {
     "CIVIL" -> "Civil"; "ELECTRICAL" -> "Electrical"; "PLUMBING" -> "Plumbing"; "PEST_OTHER" -> "Pest / Other"; else -> d
-}
-internal fun statusLabel(s: String) = when (s) {
+})
+internal fun statusLabel(s: String) = Loc.str(when (s) {
     "DRAFT" -> "Draft"; "IN_PROGRESS" -> "In progress"; "IN_REVIEW" -> "In review"
     "COMPLETED" -> "Completed"; "REPORTED" -> "Reported"; "PENDING" -> "Pending"; "SIGNED" -> "Signed"; else -> s
-}
+})
 
 // MARK: Login
 @Composable
@@ -64,15 +82,15 @@ fun LoginScreen(backend: Backend) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(Icons.Default.Home, null, tint = Navy, modifier = Modifier.size(48.dp))
-        Text("CHECK House Inspections", color = Color.Gray, modifier = Modifier.padding(bottom = 24.dp))
-        Text("Sign in", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
+        Text(tr("CHECK House Inspections"), color = Color.Gray, modifier = Modifier.padding(bottom = 24.dp))
+        Text(tr("Sign in"), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold,
             modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(email, { email = it }, label = { Text("Email") },
+        OutlinedTextField(email, { email = it }, label = { Text(tr("Email")) },
             keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Email),
             singleLine = true, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(8.dp))
-        OutlinedTextField(password, { password = it }, label = { Text("Password") },
+        OutlinedTextField(password, { password = it }, label = { Text(tr("Password")) },
             visualTransformation = PasswordVisualTransformation(), singleLine = true, modifier = Modifier.fillMaxWidth())
         error?.let { Text(it, color = IssueRed, style = MaterialTheme.typography.bodySmall) }
         Spacer(Modifier.height(12.dp))
@@ -81,15 +99,16 @@ fun LoginScreen(backend: Backend) {
                 busy = true; error = null
                 scope.launch {
                     try { backend.login(email.trim(), password) }
-                    catch (e: Exception) { error = "Invalid email or password" }
+                    catch (e: Exception) { error = Loc.str("Invalid email or password") }
                     busy = false
                 }
             },
             enabled = !busy && email.isNotBlank() && password.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
-        ) { Text(if (busy) "Signing in…" else "Sign in") }
-        Text("Demo: admin@check.test / password123", style = MaterialTheme.typography.bodySmall,
+        ) { Text(if (busy) tr("Signing in…") else tr("Sign in")) }
+        Text(tr("Demo: admin@check.test / password123"), style = MaterialTheme.typography.bodySmall,
             color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
+        LanguageToggle()
     }
 }
 
@@ -122,13 +141,16 @@ fun HomeScreen(
 
     Scaffold(topBar = {
         TopAppBar(
-            title = { Text(if (isInspector) "My Day" else "Inspections") },
+            title = { Text(if (isInspector) tr("My Day") else tr("Inspections")) },
             navigationIcon = {
                 if (isStaff) IconButton(onClick = onUsers) { Icon(Icons.Default.Group, "Team") }
             },
             actions = {
+                val ctx = LocalContext.current
+                // Compact language switch so the bar isn't crowded.
+                TextButton(onClick = { Loc.toggle(ctx) }) { Text(if (Loc.lang == "ar") "EN" else "ع") }
                 if (isStaff) IconButton(onClick = onNew) { Icon(Icons.Default.Add, "New inspection") }
-                TextButton(onClick = { scope.launch { backend.logout() } }) { Text("Log out") }
+                TextButton(onClick = { scope.launch { backend.logout() } }) { Text(tr("Log out")) }
             }
         )
     }) { pad ->
@@ -139,7 +161,7 @@ fun HomeScreen(
             } else {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (items.isEmpty()) item { Text("Nothing to show.", color = Color.Gray) }
+                    if (items.isEmpty()) item { Text(tr("Nothing to show."), color = Color.Gray) }
                     items(items) { job -> JobCard(job) { onOpen(job.id) } }
                 }
             }
@@ -188,7 +210,7 @@ fun SyncBanner(backend: Backend) {
             Text(text, color = Color.White, style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
             if (online && pending > 0) {
                 TextButton(onClick = { scope.launch { backend.flushOutbox() } }) {
-                    Text("Sync now", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                    Text(tr("Sync now"), color = Color.White, style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -237,7 +259,7 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
 
     val d = detail
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Inspection") },
+        TopAppBar(title = { Text(tr("Inspection")) },
             navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, null) } })
     }) { pad ->
         if (d == null) { Box(Modifier.fillMaxSize().padding(pad), Alignment.Center) { CircularProgressIndicator() }; return@Scaffold }
@@ -249,6 +271,7 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
             .filter { it.items.isNotEmpty() } else d.rooms
         val room = rooms.firstOrNull { it.id == activeRoom } ?: rooms.firstOrNull()
 
+        Box(Modifier.fillMaxSize()) {
         Column(Modifier.padding(pad).fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
 
@@ -259,7 +282,7 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
                     Pill(statusLabel(d.status), Navy)
                 }
                 Text(d.property.address, color = Color.Gray)
-                if (locked) Text("🔒 Approved & locked", color = Green, fontWeight = FontWeight.Bold)
+                if (locked) Text(tr("🔒 Approved & locked"), color = Green, fontWeight = FontWeight.Bold)
             } }
 
             // Room chips
@@ -321,10 +344,10 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
                                 TextButton(onClick = {
                                     photoItemId = item.id
                                     val uri = createCameraUri(context); cameraUri = uri; cameraLauncher.launch(uri)
-                                }) { Icon(Icons.Default.PhotoCamera, null); Spacer(Modifier.width(4.dp)); Text("Take photo") }
+                                }) { Icon(Icons.Default.PhotoCamera, null); Spacer(Modifier.width(4.dp)); Text(tr("Take photo")) }
                                 TextButton(onClick = {
                                     photoItemId = item.id; galleryLauncher.launch("image/*")
-                                }) { Icon(Icons.Default.Photo, null); Spacer(Modifier.width(4.dp)); Text("Choose") }
+                                }) { Icon(Icons.Default.Photo, null); Spacer(Modifier.width(4.dp)); Text(tr("Choose")) }
                             }
                         }
                     } }
@@ -332,7 +355,7 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
             }
 
             // Signatures
-            Text("Signatures", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(tr("Signatures"), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             d.assignments.forEach { a ->
                 val signed = d.signatures.any { it.discipline == a.discipline }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -343,16 +366,16 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
                     when {
                         signed -> Icon(Icons.Default.CheckCircle, null, tint = Green)
                         isInspector && user?.discipline == a.discipline && !locked ->
-                            Button(onClick = { signing = true }) { Text("Sign") }
+                            Button(onClick = { signing = true }) { Text(tr("Sign")) }
                         else -> Pill(statusLabel(a.status), Color.Gray)
                     }
                 }
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Manager approval", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text(tr("Manager approval"), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 when {
                     d.signatures.any { it.isManager } -> Icon(Icons.Default.CheckCircle, null, tint = Green)
-                    canApprove -> Button(onClick = { signing = true }) { Text("Approve & sign") }
+                    canApprove -> Button(onClick = { signing = true }) { Text(tr("Approve & sign")) }
                     else -> Pill(statusLabel(d.status), Color.Gray)
                 }
             }
@@ -378,13 +401,14 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
                 }
             }
         }
+        }
     }
 }
 
 @Composable
 private fun StatusMenu(status: String?, enabled: Boolean, onPick: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    val label = when (status) { "GOOD" -> "Good"; "ISSUE" -> "Issue"; "NA" -> "N/A"; else -> "—" }
+    val label = Loc.str(when (status) { "GOOD" -> "Good"; "ISSUE" -> "Issue"; "NA" -> "N/A"; else -> "—" })
     Box {
         TextButton(onClick = { if (enabled) open = true }, enabled = enabled) {
             Text(label, color = if (status == "ISSUE") IssueRed else if (status == "GOOD") Green else Color.Unspecified,
@@ -392,7 +416,7 @@ private fun StatusMenu(status: String?, enabled: Boolean, onPick: (String) -> Un
         }
         DropdownMenu(open, { open = false }) {
             listOf("GOOD" to "Good", "ISSUE" to "Issue", "NA" to "N/A").forEach { (v, t) ->
-                DropdownMenuItem(text = { Text(t) }, onClick = { open = false; onPick(v) })
+                DropdownMenuItem(text = { Text(tr(t)) }, onClick = { open = false; onPick(v) })
             }
         }
     }

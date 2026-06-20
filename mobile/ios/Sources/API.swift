@@ -31,9 +31,8 @@ final class AuthStore: ObservableObject {
     // mobile/crc-ca.crt as a profile and enable full trust. URLSession will not
     // accept the self-signed cert otherwise.
     //
-    // PRODUCTION (Azure/AKS): change this to https://inspection-api.<your-domain>.
-    // That host has a real Let's Encrypt cert, so NO CA install is needed.
-    static let baseURL = URL(string: "https://inspection-api.apps-crc.testing")!
+    // Production (Azure/AKS) — real Let's Encrypt cert, no CA install needed.
+    static let baseURL = URL(string: "https://api.gocheckpro.com")!
 
     private var accessToken: String? {
         didSet { UserDefaults.standard.set(accessToken, forKey: "accessToken") }

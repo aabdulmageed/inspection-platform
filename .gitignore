@@ -11,3 +11,9 @@ coverage/
 apps/api/prisma/migrations/dev.db*
 # OS
 .DS_Store
+# Mobile build artifacts
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/ios/**/xcuserdata/
+mobile/ios/DerivedData/
