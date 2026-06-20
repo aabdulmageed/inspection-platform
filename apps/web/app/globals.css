@@ -3,6 +3,17 @@
 /* Class-based dark mode (next-themes toggles `.dark` on <html>). */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Bare `grid` stacks (no explicit grid-cols-*) otherwise get an implicit
+   `auto` column that grows to its widest child's max-content — long
+   unbreakable text like a truncated address blows the column past the
+   viewport on mobile, so nothing truncates and the page overflows.
+   Constrain the single column to the container; Tailwind's grid-cols-*
+   utilities (in the higher-priority utilities layer) still override this
+   at their breakpoints for intentional multi-column grids. */
+@layer base {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ---- Semantic tokens, mapped into Tailwind color utilities ---- */
 @theme inline {
   --color-bg: var(--bg);
