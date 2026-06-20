@@ -72,7 +72,7 @@ export default function UsersPage() {
     <div className="grid gap-5 max-w-3xl">
       <h1 className="text-2xl font-bold">{t("users.title")}</h1>
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-x-auto">
         <table className="w-full text-sm" style={{ textAlign: dir === "rtl" ? "right" : "left" }}>
           <thead>
             <tr className="text-muted text-xs border-b border-line">

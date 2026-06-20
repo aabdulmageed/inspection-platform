@@ -84,8 +84,8 @@ export default function AgendaPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-bold truncate">{j.property.client.name}</div>
-                    <div className="text-muted text-sm flex items-center gap-1 mt-0.5">
-                      <MapPin size={13} /> <span className="truncate">{j.property.address}</span>
+                    <div className="text-muted text-sm flex items-center gap-1 mt-0.5 min-w-0">
+                      <MapPin size={13} className="shrink-0" /> <span className="truncate">{j.property.address}</span>
                     </div>
                   </div>
                   {/* Inspector sees their own task status; staff see overall status. */}

@@ -46,8 +46,8 @@ export default function AssignList() {
               <Card className="p-4 flex items-center justify-between gap-3 hover:border-navy/40 transition">
                 <div className="min-w-0">
                   <div className="font-bold truncate">{j.property.client.name}</div>
-                  <div className="text-muted text-sm flex items-center gap-1 mt-0.5">
-                    <MapPin size={13} /> <span className="truncate">{j.property.address}</span>
+                  <div className="text-muted text-sm flex items-center gap-1 mt-0.5 min-w-0">
+                    <MapPin size={13} className="shrink-0" /> <span className="truncate">{j.property.address}</span>
                   </div>
                 </div>
                 <Arrow size={18} className="text-muted shrink-0" />

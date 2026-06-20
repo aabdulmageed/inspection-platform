@@ -227,9 +227,9 @@ export default function InspectionDetail() {
       {/* Header card */}
       <Card className="p-5">
         <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold">{data.property.client.name}</h1>
-            <div className="text-muted text-sm flex items-center gap-1 mt-1"><MapPin size={14} /> {data.property.address}</div>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold break-words">{data.property.client.name}</h1>
+            <div className="text-muted text-sm flex items-center gap-1 mt-1 min-w-0"><MapPin size={14} className="shrink-0" /> <span className="truncate">{data.property.address}</span></div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Badge tone="brand">{t(`status.${data.status}`)}</Badge>
