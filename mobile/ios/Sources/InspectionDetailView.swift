@@ -13,6 +13,12 @@ struct InspectionDetailView: View {
     @State private var showCamera = false
     @State private var cameraTargetItemId: String?
     @State private var pending: PendingPhoto?   // photo awaiting annotation + upload
+    @State private var showAddRoom = false
+    @State private var newRoomName = ""
+    @State private var showAddCheck = false
+    @State private var addCheckRoomId: String?
+    @State private var newCheckName = ""
+    @State private var newCheckDiscipline = "CIVIL"
 
     private var role: String { auth.user?.role ?? "" }
     private var isInspector: Bool { role == "INSPECTOR" }
@@ -21,6 +27,9 @@ struct InspectionDetailView: View {
         guard let d = detail, !locked else { return false }
         return role == "ADMIN" || (role == "MANAGER" && d.status == "IN_REVIEW")
     }
+    /// This inspector is on the team (matched by discipline), or the user is staff.
+    private var assignedMe: Bool { detail?.assignments.contains { $0.discipline == auth.user?.discipline } ?? false }
+    private var canContribute: Bool { !locked && (role == "ADMIN" || role == "MANAGER" || (isInspector && assignedMe)) }
 
     /// Inspectors see only their discipline's checks.
     private var visibleRooms: [Room] {
@@ -75,6 +84,34 @@ struct InspectionDetailView: View {
                 photoItem = nil
             }
         }
+        .alert(loc.t("Add room"), isPresented: $showAddRoom) {
+            TextField(loc.t("Room name"), text: $newRoomName)
+            Button(loc.t("Add")) { Task { await addRoom() } }
+            Button(loc.t("Cancel"), role: .cancel) { newRoomName = "" }
+        }
+        .sheet(isPresented: $showAddCheck) {
+            NavigationStack {
+                Form {
+                    TextField(loc.t("Check name"), text: $newCheckName)
+                    if !isInspector {
+                        Picker(loc.t("Discipline"), selection: $newCheckDiscipline) {
+                            ForEach(kDisciplines, id: \.self) { Text(loc.t(disciplineLabel($0))).tag($0) }
+                        }
+                    }
+                }
+                .navigationTitle(loc.t("Add check"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(loc.t("Cancel")) { showAddCheck = false; newCheckName = "" }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(loc.t("Add")) { Task { await addCheck() } }
+                            .disabled(newCheckName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+            }
+        }
     }
 
     // MARK: Sections
@@ -100,12 +137,24 @@ struct InspectionDetailView: View {
                     ForEach(visibleRooms) { Text($0.name).tag($0.id) }
                 }.pickerStyle(.menu)
             }
+            if canContribute {
+                Button { newRoomName = ""; showAddRoom = true } label: {
+                    Label(loc.t("Add room"), systemImage: "plus.circle").font(.subheadline)
+                }
+            }
         }
     }
 
     @ViewBuilder private func roomSection(_ room: Room) -> some View {
         Section(room.name) {
             ForEach(room.items) { item in itemRow(item) }
+            if canContribute {
+                Button {
+                    addCheckRoomId = room.id; newCheckName = ""; showAddCheck = true
+                } label: {
+                    Label(loc.t("Add check"), systemImage: "plus.circle").font(.subheadline)
+                }
+            }
         }
     }
 
@@ -225,6 +274,23 @@ struct InspectionDetailView: View {
     private func load() async { detail = try? await auth.inspection(inspectionId) }
     /// Avoid clobbering optimistic edits with a stale cached copy while offline.
     private func reloadIfOnline() async { if auth.online { await load() } }
+
+    private func addRoom() async {
+        let name = newRoomName.trimmingCharacters(in: .whitespaces)
+        newRoomName = ""
+        guard !name.isEmpty else { return }
+        try? await auth.addRoom(inspectionId: inspectionId, name: name)
+        await load()
+    }
+    private func addCheck() async {
+        guard let roomId = addCheckRoomId else { return }
+        let comp = newCheckName.trimmingCharacters(in: .whitespaces)
+        guard !comp.isEmpty else { return }
+        showAddCheck = false; newCheckName = ""; addCheckRoomId = nil
+        try? await auth.addCheck(roomId: roomId, component: comp,
+                                 discipline: isInspector ? nil : newCheckDiscipline)
+        await load()
+    }
 
     private func setStatus(_ item: Item, _ status: String) async {
         updateLocalStatus(item.id, status)              // optimistic

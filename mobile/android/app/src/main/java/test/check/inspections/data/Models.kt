@@ -75,6 +75,8 @@ data class UserRef(
 @Serializable data class RefreshBody(val refreshToken: String)
 @Serializable data class UpdateItemBody(val status: String? = null, val note: String? = null)
 @Serializable data class UpdatePhotoBody(val note: String? = null)
+@Serializable data class AddRoomBody(val name: String)
+@Serializable data class AddItemBody(val component: String, val discipline: String? = null)
 @Serializable data class SignBody(val imageData: String)
 
 @Serializable data class CustomerInput(val name: String, val phone: String? = null, val email: String? = null)

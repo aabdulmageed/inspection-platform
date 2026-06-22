@@ -227,6 +227,8 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
     var detail by remember { mutableStateOf<InspectionDetail?>(null) }
     var activeRoom by remember { mutableStateOf<String?>(null) }
     var signing by remember { mutableStateOf(false) }
+    var showAddRoom by remember { mutableStateOf(false) }
+    var showAddCheck by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
@@ -275,6 +277,8 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
         val locked = d.status == "COMPLETED" || d.status == "REPORTED"
         val isInspector = user?.role == "INSPECTOR"
         val canApprove = !locked && (user?.role == "ADMIN" || (user?.role == "MANAGER" && d.status == "IN_REVIEW"))
+        val assignedMe = d.assignments.any { it.discipline == user?.discipline }
+        val canContribute = !locked && (user?.role == "ADMIN" || user?.role == "MANAGER" || (isInspector && assignedMe))
         val rooms = if (isInspector) d.rooms.map { r -> r.copy(items = r.items.filter { it.discipline == user?.discipline }) }
             .filter { it.items.isNotEmpty() } else d.rooms
         val room = rooms.firstOrNull { it.id == activeRoom } ?: rooms.firstOrNull()
@@ -300,6 +304,11 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
                     rooms.forEach { r ->
                         FilterChip(selected = room?.id == r.id, onClick = { activeRoom = r.id }, label = { Text(r.name) })
                     }
+                }
+            }
+            if (canContribute) {
+                TextButton(onClick = { showAddRoom = true }) {
+                    Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text(tr("Add room"))
                 }
             }
 
@@ -393,6 +402,11 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
                         }
                     } }
                 }
+                if (canContribute) {
+                    TextButton(onClick = { showAddCheck = true }) {
+                        Icon(Icons.Default.Add, null); Spacer(Modifier.width(4.dp)); Text(tr("Add check"))
+                    }
+                }
             }
 
             // Signatures
@@ -441,6 +455,62 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
                     if (backend.online.value) reload()
                 }
             }
+        }
+
+        if (showAddRoom) {
+            var name by remember { mutableStateOf("") }
+            AlertDialog(
+                onDismissRequest = { showAddRoom = false },
+                title = { Text(tr("Add room")) },
+                text = { OutlinedTextField(name, { name = it }, label = { Text(tr("Room name")) }, singleLine = true) },
+                confirmButton = {
+                    TextButton(enabled = name.isNotBlank(), onClick = {
+                        val n = name.trim(); showAddRoom = false
+                        scope.launch {
+                            try { backend.api.addRoom(id, AddRoomBody(n)) } catch (_: Exception) {}
+                            if (backend.online.value) reload()
+                        }
+                    }) { Text(tr("Add")) }
+                },
+                dismissButton = { TextButton(onClick = { showAddRoom = false }) { Text(tr("Cancel")) } }
+            )
+        }
+
+        if (showAddCheck) {
+            val targetRoom = room?.id
+            var comp by remember { mutableStateOf("") }
+            var disc by remember { mutableStateOf("CIVIL") }
+            var discOpen by remember { mutableStateOf(false) }
+            AlertDialog(
+                onDismissRequest = { showAddCheck = false },
+                title = { Text(tr("Add check")) },
+                text = {
+                    Column {
+                        OutlinedTextField(comp, { comp = it }, label = { Text(tr("Check name")) }, singleLine = true)
+                        if (!isInspector) {
+                            Spacer(Modifier.height(8.dp))
+                            Box {
+                                OutlinedButton(onClick = { discOpen = true }) { Text(disciplineLabel(disc)) }
+                                DropdownMenu(expanded = discOpen, onDismissRequest = { discOpen = false }) {
+                                    DISCIPLINES.forEach { dd ->
+                                        DropdownMenuItem(text = { Text(disciplineLabel(dd)) }, onClick = { disc = dd; discOpen = false })
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(enabled = comp.isNotBlank() && targetRoom != null, onClick = {
+                        val c = comp.trim(); showAddCheck = false
+                        scope.launch {
+                            try { backend.api.addCheck(targetRoom!!, AddItemBody(c, if (isInspector) null else disc)) } catch (_: Exception) {}
+                            if (backend.online.value) reload()
+                        }
+                    }) { Text(tr("Add")) }
+                },
+                dismissButton = { TextButton(onClick = { showAddCheck = false }) { Text(tr("Cancel")) } }
+            )
         }
         }
     }

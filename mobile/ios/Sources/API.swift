@@ -261,6 +261,20 @@ final class AuthStore: ObservableObject {
                              body: try JSONSerialization.data(withJSONObject: body))
     }
 
+    /// Add a room to an inspection (online-only). Inspectors must be assigned.
+    func addRoom(inspectionId: String, name: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["name": name])
+        _ = try await authed("inspections/\(inspectionId)/rooms", method: "POST", body: body)
+    }
+    /// Add a check to a room (online-only). Inspectors add under their own
+    /// discipline (pass nil); staff must pass a discipline.
+    func addCheck(roomId: String, component: String, discipline: String?) async throws {
+        var b: [String: Any] = ["component": component]
+        if let discipline { b["discipline"] = discipline }
+        _ = try await authed("rooms/\(roomId)/items", method: "POST",
+                             body: try JSONSerialization.data(withJSONObject: b))
+    }
+
     func uploadPhoto(itemId: String, jpeg: Data) async throws {
         let boundary = "Boundary-\(UUID().uuidString)"
         var data = Data()
