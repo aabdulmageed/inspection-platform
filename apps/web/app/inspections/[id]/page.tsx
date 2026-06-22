@@ -15,7 +15,7 @@ import { PhotoAnnotator } from "../../../components/PhotoAnnotator";
 
 type Item = {
   id: string; discipline: string; component: string;
-  status: string | null; note: string | null; photos: { id: string; url: string }[];
+  status: string | null; note: string | null; photos: { id: string; url: string; note: string | null }[];
 };
 type Room = { id: string; name: string; items: Item[] };
 type Detail = {
@@ -135,6 +135,15 @@ export default function InspectionDetail() {
     setReviewTarget("");
     toast(t("review.sent"));
     load();
+  }
+
+  async function updatePhotoNote(item: Item, photoId: string, note: string) {
+    patchLocal(item.id, { photos: item.photos.map((p) => (p.id === photoId ? { ...p, note } : p)) });
+    await authedFetch(`/photos/${photoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    });
   }
 
   async function removePhoto(item: Item, photoId: string) {
@@ -380,34 +389,46 @@ export default function InspectionDetail() {
                 onBlur={(e) => e.target.value !== (item.note ?? "") && patchItem(item, { note: e.target.value })}
                 className="w-full mt-3 bg-bg border border-line rounded-lg px-3 py-2 text-sm outline-none focus:border-navy transition"
               />
-              <div className="flex flex-wrap gap-2 items-center mt-3">
+              <div className="flex flex-wrap gap-3 items-start mt-3">
                 {item.photos.map((p) => (
-                  <div key={p.id} className="relative group">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt="" onClick={() => setLightbox(p.url)}
-                      className="w-20 h-16 object-cover rounded-lg border border-line cursor-pointer hover:opacity-90 transition" />
-                    {canEdit(item) && (
-                      <button
-                        onClick={() => removePhoto(item, p.id)}
-                        aria-label="remove photo"
-                        className="absolute -top-1.5 -end-1.5 grid place-items-center h-5 w-5 rounded-full bg-issue text-white text-[11px] leading-none opacity-0 group-hover:opacity-100 transition"
-                      >
-                        ✕
-                      </button>
+                  <div key={p.id} className="w-28">
+                    <div className="relative group">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.url} alt="" onClick={() => setLightbox(p.url)}
+                        className="w-28 h-20 object-cover rounded-lg border border-line cursor-pointer hover:opacity-90 transition" />
+                      {canEdit(item) && (
+                        <button
+                          onClick={() => removePhoto(item, p.id)}
+                          aria-label="remove photo"
+                          className="absolute -top-1.5 -end-1.5 grid place-items-center h-5 w-5 rounded-full bg-issue text-white text-[11px] leading-none opacity-0 group-hover:opacity-100 transition"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    {canEdit(item) ? (
+                      <input
+                        defaultValue={p.note ?? ""}
+                        placeholder={t("photo.notePlaceholder")}
+                        onBlur={(e) => e.target.value !== (p.note ?? "") && updatePhotoNote(item, p.id, e.target.value)}
+                        className="w-28 mt-1 bg-bg border border-line rounded-lg px-2 py-1 text-[11px] outline-none focus:border-navy transition"
+                      />
+                    ) : (
+                      p.note && <div className="w-28 mt-1 text-[11px] text-muted break-words">{p.note}</div>
                     )}
                   </div>
                 ))}
                 {canEdit(item) && (
                   <>
                     {/* Camera — opens the device camera on phones/tablets. */}
-                    <label title={t("photo.camera")} className="grid place-items-center gap-0.5 w-20 h-16 rounded-lg border border-dashed border-line text-muted hover:bg-surface-2 cursor-pointer transition">
+                    <label title={t("photo.camera")} className="grid place-items-center gap-0.5 w-28 h-20 rounded-lg border border-dashed border-line text-muted hover:bg-surface-2 cursor-pointer transition">
                       <Camera size={18} />
                       <span className="text-[10px] leading-none">{t("photo.camera")}</span>
                       <input type="file" accept="image/*" capture="environment" className="hidden"
                         onChange={(e) => { const f = e.target.files?.[0]; if (f) setAnnotating({ item, file: f }); e.target.value = ""; }} />
                     </label>
                     {/* Gallery — pick an existing photo. */}
-                    <label title={t("photo.gallery")} className="grid place-items-center gap-0.5 w-20 h-16 rounded-lg border border-dashed border-line text-muted hover:bg-surface-2 cursor-pointer transition">
+                    <label title={t("photo.gallery")} className="grid place-items-center gap-0.5 w-28 h-20 rounded-lg border border-dashed border-line text-muted hover:bg-surface-2 cursor-pointer transition">
                       <ImagePlus size={18} />
                       <span className="text-[10px] leading-none">{t("photo.gallery")}</span>
                       <input type="file" accept="image/*" className="hidden"

@@ -268,7 +268,7 @@ export class InspectionsService {
   }
 
   /** Upload a photo to an item: EXIF-correct, resized, stored, linked. */
-  async addPhoto(user: AuthUser, itemId: string, file: Buffer) {
+  async addPhoto(user: AuthUser, itemId: string, file: Buffer, note?: string) {
     const item = await this.prisma.item.findUnique({ where: { id: itemId }, include: { photos: true, room: true } });
     if (!item) throw new NotFoundException("Item not found");
     await this.assertNotLocked(item.room.inspectionId);
@@ -291,10 +291,28 @@ export class InspectionsService {
       data: {
         itemId,
         url,
+        note: note?.trim() || null,
         width: meta.width ?? 0,
         height: meta.height ?? 0,
         order: item.photos.length,
       },
+    });
+  }
+
+  /** Update a photo's caption/note (same access rules as deleting it). */
+  async updatePhoto(user: AuthUser, photoId: string, note: string) {
+    const photo = await this.prisma.photo.findUnique({
+      where: { id: photoId },
+      include: { item: { include: { room: true } } },
+    });
+    if (!photo) throw new NotFoundException("Photo not found");
+    await this.assertNotLocked(photo.item.room.inspectionId);
+    if (user.role === "INSPECTOR" && user.discipline !== photo.item.discipline) {
+      throw new ForbiddenException("Cannot edit another discipline's photo");
+    }
+    return this.prisma.photo.update({
+      where: { id: photoId },
+      data: { note: note.trim() || null },
     });
   }
 
@@ -466,7 +484,9 @@ export class InspectionsService {
             discipline: it.discipline,
             status: it.status,
             note: it.note,
-            photos: await Promise.all(it.photos.map((p) => toDataUri(p.url))),
+            photos: await Promise.all(
+              it.photos.map(async (p) => ({ src: await toDataUri(p.url), note: p.note })),
+            ),
           })),
         ),
       })),

@@ -16,7 +16,7 @@ export interface ReportData {
       discipline: string;
       status: "GOOD" | "ISSUE" | "NA" | null;
       note: string | null;
-      photos: string[]; // image URLs/data URIs
+      photos: { src: string; note?: string | null }[]; // image data URI + caption
     }[];
   }[];
   signatures: { label: string; image?: string }[]; // pre-localized; image = captured signature
@@ -95,7 +95,12 @@ export function buildHtml(data: ReportData): string {
           ${
             it.photos.length
               ? `<div class="photos">${it.photos
-                  .map((p) => `<img src="${esc(p)}" />`)
+                  .map(
+                    (p) =>
+                      `<figure><img src="${esc(p.src)}" />${
+                        p.note ? `<figcaption>${esc(p.note)}</figcaption>` : ""
+                      }</figure>`,
+                  )
                   .join("")}</div>`
               : ""
           }
@@ -143,7 +148,9 @@ export function buildHtml(data: ReportData): string {
   .disc { background: #eef2f7; border-radius: 5px; padding: 1px 6px; font-size: 10px; color: #5a6b7b; }
   .note { margin-top: 5px; color: #243140; }
   .photos { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
-  .photos img { width: 30%; border: 1px solid #ccc; border-radius: 4px; }
+  .photos figure { width: 31%; margin: 0; page-break-inside: avoid; }
+  .photos img { width: 100%; border: 1px solid #ccc; border-radius: 4px; display: block; }
+  .photos figcaption { margin-top: 2px; font-size: 9px; color: #5a6b7b; line-height: 1.25; }
   .sigs { display: flex; gap: 40px; margin-top: 30px; }
   .sig { flex: 1; text-align: center; }
   .sig-line { border-bottom: 1px solid #134486; height: 48px; display: flex; align-items: flex-end; justify-content: center; }

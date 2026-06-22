@@ -166,12 +166,13 @@ model Item {
 }
 
 model Photo {
-  id     String @id @default(cuid())
+  id     String  @id @default(cuid())
   itemId String
   url    String
-  width  Int    @default(0)
-  height Int    @default(0)
-  order  Int    @default(0)
+  note   String? // per-photo caption describing what this photo shows
+  width  Int     @default(0)
+  height Int     @default(0)
+  order  Int     @default(0)
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 

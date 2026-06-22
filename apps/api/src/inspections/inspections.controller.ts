@@ -53,6 +53,9 @@ class UpdateItemBody {
   @IsOptional() @IsEnum(ItemStatus) status?: ItemStatus;
   @IsOptional() @IsString() note?: string;
 }
+class UpdatePhotoBody {
+  @IsOptional() @IsString() note?: string;
+}
 class SignBody {
   @IsString() imageData!: string; // png/jpeg data URI drawn on the client
 }
@@ -148,10 +151,11 @@ export class InspectionsController {
   uploadPhoto(
     @CurrentUser() user: AuthUser,
     @Param("itemId") itemId: string,
+    @Body("note") note?: string,
     @UploadedFile() file?: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException("file is required");
-    return this.svc.addPhoto(user, itemId, file.buffer);
+    return this.svc.addPhoto(user, itemId, file.buffer, note);
   }
 
   @Post("inspections/:id/sign")
@@ -163,6 +167,11 @@ export class InspectionsController {
   @Post("inspections/:id/request-changes")
   requestChanges(@CurrentUser() user: AuthUser, @Param("id") id: string, @Body() b: RequestChangesBody) {
     return this.svc.requestChanges(user, id, b.text, b.discipline);
+  }
+
+  @Patch("photos/:photoId")
+  updatePhoto(@CurrentUser() user: AuthUser, @Param("photoId") photoId: string, @Body() b: UpdatePhotoBody) {
+    return this.svc.updatePhoto(user, photoId, b.note ?? "");
   }
 
   @Delete("photos/:photoId")
