@@ -279,8 +279,11 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
         val canApprove = !locked && (user?.role == "ADMIN" || (user?.role == "MANAGER" && d.status == "IN_REVIEW"))
         val assignedMe = d.assignments.any { it.discipline == user?.discipline }
         val canContribute = !locked && (user?.role == "ADMIN" || user?.role == "MANAGER" || (isInspector && assignedMe))
+        // Show every room (rooms are property-wide), keeping only this inspector's
+        // own-discipline checks inside each — so a room they/another discipline
+        // just created stays visible and they can add their checks to it.
         val rooms = if (isInspector) d.rooms.map { r -> r.copy(items = r.items.filter { it.discipline == user?.discipline }) }
-            .filter { it.items.isNotEmpty() } else d.rooms
+            else d.rooms
         val room = rooms.firstOrNull { it.id == activeRoom } ?: rooms.firstOrNull()
 
         Box(Modifier.fillMaxSize()) {

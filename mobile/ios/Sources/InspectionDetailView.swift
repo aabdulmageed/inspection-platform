@@ -31,13 +31,14 @@ struct InspectionDetailView: View {
     private var assignedMe: Bool { detail?.assignments.contains { $0.discipline == auth.user?.discipline } ?? false }
     private var canContribute: Bool { !locked && (role == "ADMIN" || role == "MANAGER" || (isInspector && assignedMe)) }
 
-    /// Inspectors see only their discipline's checks.
+    /// Every room is shown (rooms are property-wide), but an inspector only sees
+    /// their own discipline's checks inside each — so a room another discipline
+    /// (or they) just created is visible and they can add their checks to it.
     private var visibleRooms: [Room] {
         guard let d = detail else { return [] }
         guard isInspector, let disc = auth.user?.discipline else { return d.rooms }
-        return d.rooms.compactMap { room in
-            let items = room.items.filter { $0.discipline == disc }
-            return items.isEmpty ? nil : Room(id: room.id, name: room.name, items: items)
+        return d.rooms.map { room in
+            Room(id: room.id, name: room.name, items: room.items.filter { $0.discipline == disc })
         }
     }
     private var activeRoom: Room? { visibleRooms.first { $0.id == activeRoomId } ?? visibleRooms.first }
