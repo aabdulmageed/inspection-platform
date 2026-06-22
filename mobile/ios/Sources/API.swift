@@ -214,6 +214,10 @@ final class AuthStore: ObservableObject {
     func deletePhoto(_ photoId: String) async throws {
         try await enqueueOrSend(path: "photos/\(photoId)", method: "DELETE", body: nil, label: "Delete photo")
     }
+    func updatePhotoNote(_ photoId: String, note: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["note": note])
+        try await enqueueOrSend(path: "photos/\(photoId)", method: "PATCH", body: body, label: "Photo note")
+    }
     // MARK: Staff endpoints (ADMIN / MANAGER)
 
     func users() async throws -> [UserRef] {

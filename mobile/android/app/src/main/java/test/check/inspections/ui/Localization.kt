@@ -63,6 +63,7 @@ object Loc {
         "🔒 Approved & locked" to "🔒 معتمد ومقفل",
         "Take photo" to "التقاط صورة",
         "Choose" to "اختيار",
+        "Photo note…" to "ملاحظة الصورة…",
         "Good" to "جيد",
         "Issue" to "مشكلة",
         "N/A" to "لا ينطبق",

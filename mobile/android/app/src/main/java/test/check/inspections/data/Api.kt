@@ -32,6 +32,9 @@ interface Api {
     @DELETE("photos/{id}")
     suspend fun deletePhoto(@Path("id") id: String)
 
+    @PATCH("photos/{id}")
+    suspend fun updatePhotoNote(@Path("id") id: String, @Body body: UpdatePhotoBody)
+
     // Staff (ADMIN / MANAGER)
     @GET("users")
     suspend fun users(): List<UserRef>

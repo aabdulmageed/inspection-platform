@@ -139,17 +139,28 @@ struct InspectionDetailView: View {
             }
             if !item.photos.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack { ForEach(item.photos) { p in
-                        ZStack(alignment: .topTrailing) {
-                            AsyncImage(url: URL(string: p.url)) { img in img.resizable().scaledToFill() } placeholder: { Color.gray.opacity(0.2) }
-                                .frame(width: 72, height: 56).clipShape(.rect(cornerRadius: 8))
-                            if editable {
-                                Button { Task { await deletePhoto(p.id) } } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 18))
-                                        .foregroundStyle(.white, Color.issue)
+                    HStack(alignment: .top, spacing: 10) { ForEach(item.photos) { p in
+                        VStack(alignment: .leading, spacing: 4) {
+                            ZStack(alignment: .topTrailing) {
+                                AsyncImage(url: URL(string: p.url)) { img in img.resizable().scaledToFill() } placeholder: { Color.gray.opacity(0.2) }
+                                    .frame(width: 96, height: 72).clipShape(.rect(cornerRadius: 8))
+                                if editable {
+                                    Button { Task { await deletePhoto(p.id) } } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundStyle(.white, Color.issue)
+                                    }
+                                    .offset(x: 6, y: -6)
                                 }
-                                .offset(x: 6, y: -6)
+                            }
+                            if editable {
+                                TextField(loc.t("Photo note…"), text: Binding(
+                                    get: { p.note ?? "" },
+                                    set: { newVal in updateLocalPhotoNote(p.id, newVal) }
+                                ), onCommit: { Task { await savePhotoNote(p.id) } })
+                                .font(.caption).textFieldStyle(.roundedBorder).frame(width: 96)
+                            } else if let n = p.note, !n.isEmpty {
+                                Text(n).font(.caption).foregroundStyle(.secondary).frame(width: 96, alignment: .leading)
                             }
                         }
                     } }
@@ -237,6 +248,19 @@ struct InspectionDetailView: View {
     private func saveNote(_ item: Item) async {
         let current = detail?.rooms.flatMap(\.items).first { $0.id == item.id }?.note
         try? await auth.updateItem(item.id, status: nil, note: current ?? "")
+    }
+    private func updateLocalPhotoNote(_ photoId: String, _ note: String) {
+        guard var d = detail else { return }
+        d.rooms = d.rooms.map { room in
+            var r = room
+            r.items = r.items.map { var it = $0; it.photos = it.photos.map { var p = $0; if p.id == photoId { p.note = note }; return p }; return it }
+            return r
+        }
+        detail = d
+    }
+    private func savePhotoNote(_ photoId: String) async {
+        let current = detail?.rooms.flatMap(\.items).flatMap(\.photos).first { $0.id == photoId }?.note
+        try? await auth.updatePhotoNote(photoId, note: current ?? "")
     }
     private func sign(_ uri: String) async {
         try? await auth.sign(inspectionId, imageDataURI: uri)

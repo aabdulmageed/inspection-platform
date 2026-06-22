@@ -55,6 +55,7 @@ final class Loc: ObservableObject {
         "Approved & locked": "معتمد ومقفل",
         "Room": "الغرفة",
         "Add a note…": "إضافة ملاحظة…",
+        "Photo note…": "ملاحظة الصورة…",
         "Take photo": "التقاط صورة",
         "Choose photo": "اختيار صورة",
         "Signatures": "التواقيع",

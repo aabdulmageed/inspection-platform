@@ -31,7 +31,7 @@ data class InspectionSummary(
 )
 
 @Serializable
-data class Photo(val id: String, val url: String)
+data class Photo(val id: String, val url: String, val note: String? = null)
 
 @Serializable
 data class Item(
@@ -74,6 +74,7 @@ data class UserRef(
 @Serializable data class LoginBody(val email: String, val password: String)
 @Serializable data class RefreshBody(val refreshToken: String)
 @Serializable data class UpdateItemBody(val status: String? = null, val note: String? = null)
+@Serializable data class UpdatePhotoBody(val note: String? = null)
 @Serializable data class SignBody(val imageData: String)
 
 @Serializable data class CustomerInput(val name: String, val phone: String? = null, val email: String? = null)

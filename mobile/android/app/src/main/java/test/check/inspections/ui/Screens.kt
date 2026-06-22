@@ -17,6 +17,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -247,6 +249,12 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
             r.copy(items = r.items.map { it.copy(photos = it.photos.filter { p -> p.id != photoId }) })
         })
     }
+    fun patchPhotoNoteLocal(photoId: String, note: String) {
+        val cur = detail ?: return
+        detail = cur.copy(rooms = cur.rooms.map { r ->
+            r.copy(items = r.items.map { it.copy(photos = it.photos.map { p -> if (p.id == photoId) p.copy(note = note) else p }) })
+        })
+    }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         if (ok) cameraUri?.let { pendingBitmap = decodeBitmap(context, it) }
@@ -315,25 +323,58 @@ fun DetailScreen(backend: Backend, id: String, onBack: () -> Unit) {
                             }
                         }
                         if (item.photos.isNotEmpty()) {
-                            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                item.photos.take(4).forEach { p ->
-                                    Box {
-                                        AsyncImage(model = p.url, contentDescription = null, modifier = Modifier.size(64.dp))
+                            Row(
+                                Modifier.padding(top = 8.dp).horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                item.photos.forEach { p ->
+                                    Column(Modifier.width(96.dp)) {
+                                        Box {
+                                            AsyncImage(
+                                                model = p.url, contentDescription = null,
+                                                modifier = Modifier.size(width = 96.dp, height = 72.dp)
+                                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                            )
+                                            if (editable) {
+                                                Surface(
+                                                    color = IssueRed, shape = androidx.compose.foundation.shape.CircleShape,
+                                                    modifier = Modifier.align(Alignment.TopEnd).size(20.dp)
+                                                        .clickable {
+                                                            removePhotoLocal(p.id)
+                                                            scope.launch {
+                                                                try { backend.api.deletePhoto(p.id) } catch (_: Exception) {}
+                                                                if (backend.online.value) reload()
+                                                            }
+                                                        }
+                                                ) {
+                                                    Icon(Icons.Default.Close, "Remove photo", tint = Color.White,
+                                                        modifier = Modifier.padding(2.dp))
+                                                }
+                                            }
+                                        }
                                         if (editable) {
-                                            Surface(
-                                                color = IssueRed, shape = androidx.compose.foundation.shape.CircleShape,
-                                                modifier = Modifier.align(Alignment.TopEnd).size(20.dp)
-                                                    .clickable {
-                                                        removePhotoLocal(p.id)
-                                                        scope.launch {
-                                                            try { backend.api.deletePhoto(p.id) } catch (_: Exception) {}
-                                                            if (backend.online.value) reload()
+                                            var noteText by remember(p.id, p.note) { mutableStateOf(p.note ?: "") }
+                                            OutlinedTextField(
+                                                value = noteText,
+                                                onValueChange = { noteText = it },
+                                                placeholder = { Text(tr("Photo note…"), style = MaterialTheme.typography.bodySmall) },
+                                                textStyle = MaterialTheme.typography.bodySmall,
+                                                singleLine = true,
+                                                modifier = Modifier.width(96.dp).padding(top = 4.dp)
+                                                    .onFocusChanged { f ->
+                                                        if (!f.isFocused && noteText != (p.note ?: "")) {
+                                                            patchPhotoNoteLocal(p.id, noteText)
+                                                            scope.launch {
+                                                                try { backend.api.updatePhotoNote(p.id, UpdatePhotoBody(noteText)) } catch (_: Exception) {}
+                                                            }
                                                         }
                                                     }
-                                            ) {
-                                                Icon(Icons.Default.Close, "Remove photo", tint = Color.White,
-                                                    modifier = Modifier.padding(2.dp))
-                                            }
+                                            )
+                                        } else if (!p.note.isNullOrEmpty()) {
+                                            Text(
+                                                p.note!!, style = MaterialTheme.typography.bodySmall, color = Color.Gray,
+                                                modifier = Modifier.width(96.dp).padding(top = 4.dp)
+                                            )
                                         }
                                     }
                                 }
