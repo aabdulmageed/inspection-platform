@@ -411,10 +411,10 @@ export default function InspectionDetail() {
                         defaultValue={p.note ?? ""}
                         placeholder={t("photo.notePlaceholder")}
                         onBlur={(e) => e.target.value !== (p.note ?? "") && updatePhotoNote(item, p.id, e.target.value)}
-                        className="w-28 mt-1 bg-bg border border-line rounded-lg px-2 py-1 text-[11px] outline-none focus:border-navy transition"
+                        className="w-28 mt-1 bg-bg border border-line rounded-lg px-2 py-1.5 text-[13px] outline-none focus:border-navy transition"
                       />
                     ) : (
-                      p.note && <div className="w-28 mt-1 text-[11px] text-muted break-words">{p.note}</div>
+                      p.note && <div className="w-28 mt-1 text-[13px] text-muted break-words">{p.note}</div>
                     )}
                   </div>
                 ))}
