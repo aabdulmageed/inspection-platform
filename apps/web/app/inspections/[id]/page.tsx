@@ -212,11 +212,12 @@ export default function InspectionDetail() {
   const canApprove = !locked && (user?.role === "ADMIN" || (user?.role === "MANAGER" && data.status === "IN_REVIEW"));
 
   // Inspectors only see checks for their own discipline; managers see everything.
+  // Rooms are property-wide, so every room stays visible (even with no checks in
+  // the inspector's discipline) — that way an inspector can add their checks to a
+  // room another discipline created. Only the checks inside are filtered.
   const isInspector = user?.role === "INSPECTOR";
   const visibleRooms = isInspector
-    ? data.rooms
-        .map((r) => ({ ...r, items: r.items.filter((i) => i.discipline === user?.discipline) }))
-        .filter((r) => r.items.length > 0 || r.id === activeRoomId)
+    ? data.rooms.map((r) => ({ ...r, items: r.items.filter((i) => i.discipline === user?.discipline) }))
     : data.rooms;
   const activeRoom = visibleRooms.find((r) => r.id === activeRoomId) ?? visibleRooms[0];
   const Back = dir === "rtl" ? ArrowRight : ArrowLeft;
