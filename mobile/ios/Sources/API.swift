@@ -31,9 +31,8 @@ final class AuthStore: ObservableObject {
     // mobile/crc-ca.crt as a profile and enable full trust. URLSession will not
     // accept the self-signed cert otherwise.
     //
-    // PRODUCTION (Azure/AKS): change this to https://inspection-api.<your-domain>.
-    // That host has a real Let's Encrypt cert, so NO CA install is needed.
-    static let baseURL = URL(string: "https://inspection-api.apps-crc.testing")!
+    // Production (Azure/AKS) — real Let's Encrypt cert, no CA install needed.
+    static let baseURL = URL(string: "https://api.gocheckpro.com")!
 
     private var accessToken: String? {
         didSet { UserDefaults.standard.set(accessToken, forKey: "accessToken") }
@@ -215,6 +214,10 @@ final class AuthStore: ObservableObject {
     func deletePhoto(_ photoId: String) async throws {
         try await enqueueOrSend(path: "photos/\(photoId)", method: "DELETE", body: nil, label: "Delete photo")
     }
+    func updatePhotoNote(_ photoId: String, note: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["note": note])
+        try await enqueueOrSend(path: "photos/\(photoId)", method: "PATCH", body: body, label: "Photo note")
+    }
     // MARK: Staff endpoints (ADMIN / MANAGER)
 
     func users() async throws -> [UserRef] {
@@ -256,6 +259,20 @@ final class AuthStore: ObservableObject {
         if role == "INSPECTOR", let discipline { body["discipline"] = discipline }
         _ = try await authed("users", method: "POST",
                              body: try JSONSerialization.data(withJSONObject: body))
+    }
+
+    /// Add a room to an inspection (online-only). Inspectors must be assigned.
+    func addRoom(inspectionId: String, name: String) async throws {
+        let body = try JSONSerialization.data(withJSONObject: ["name": name])
+        _ = try await authed("inspections/\(inspectionId)/rooms", method: "POST", body: body)
+    }
+    /// Add a check to a room (online-only). Inspectors add under their own
+    /// discipline (pass nil); staff must pass a discipline.
+    func addCheck(roomId: String, component: String, discipline: String?) async throws {
+        var b: [String: Any] = ["component": component]
+        if let discipline { b["discipline"] = discipline }
+        _ = try await authed("rooms/\(roomId)/items", method: "POST",
+                             body: try JSONSerialization.data(withJSONObject: b))
     }
 
     func uploadPhoto(itemId: String, jpeg: Data) async throws {

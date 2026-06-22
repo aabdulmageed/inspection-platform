@@ -20,6 +20,7 @@ private func dayKey(_ date: Date) -> String {
 struct NewInspectionFlow: View {
     let onDone: () -> Void
     @EnvironmentObject var auth: AuthStore
+    @EnvironmentObject var loc: Loc
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
@@ -43,36 +44,36 @@ struct NewInspectionFlow: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Customer") {
-                    TextField("Name", text: $name)
-                    TextField("Phone", text: $phone).keyboardType(.phonePad)
-                    TextField("Email", text: $email)
+                Section(loc.t("Customer")) {
+                    TextField(loc.t("Name"), text: $name)
+                    TextField(loc.t("Phone"), text: $phone).keyboardType(.phonePad)
+                    TextField(loc.t("Email"), text: $email)
                         .textInputAutocapitalization(.never).keyboardType(.emailAddress)
                 }
-                Section("Property") {
-                    TextField("Address", text: $address)
+                Section(loc.t("Property")) {
+                    TextField(loc.t("Address"), text: $address)
                     Button {
                         showMap = true
                     } label: {
-                        Label(coords == nil ? "Pick on map" : "Change location", systemImage: "mappin.and.ellipse")
+                        Label(coords == nil ? loc.t("Pick on map") : loc.t("Change location"), systemImage: "mappin.and.ellipse")
                     }
                     if let coords {
                         Text(String(format: "📍 %.5f, %.5f", coords.latitude, coords.longitude))
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Picker("Type", selection: $propertyType) {
-                        ForEach(kPropertyTypes, id: \.self) { Text(propertyTypeLabel($0)).tag($0) }
+                    Picker(loc.t("Type"), selection: $propertyType) {
+                        ForEach(kPropertyTypes, id: \.self) { Text(loc.t(propertyTypeLabel($0))).tag($0) }
                     }
-                    TextField("Inspection type", text: $inspectionType)
+                    TextField(loc.t("Inspection type"), text: $inspectionType)
                 }
                 if let error { Text(error).foregroundStyle(.red).font(.footnote) }
             }
-            .navigationTitle("New Inspection")
+            .navigationTitle(loc.t("New Inspection"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(loc.t("Cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(busy ? "…" : "Next") { Task { await createDraft() } }
+                    Button(busy ? "…" : loc.t("Next")) { Task { await createDraft() } }
                         .disabled(!valid || busy)
                 }
             }
@@ -114,6 +115,7 @@ struct AssignTeamView: View {
     let onDone: () -> Void
 
     @EnvironmentObject var auth: AuthStore
+    @EnvironmentObject var loc: Loc
     @State private var inspectors: [UserRef] = []
     @State private var date = Date()
     @State private var picked: [String: String] = [:]   // discipline -> inspectorId
@@ -125,30 +127,30 @@ struct AssignTeamView: View {
             if let customerName {
                 Section { Text(customerName).font(.headline) }
             }
-            Section("Schedule") {
-                DatePicker("Date", selection: $date, displayedComponents: .date)
+            Section(loc.t("Schedule")) {
+                DatePicker(loc.t("Date"), selection: $date, displayedComponents: .date)
             }
-            Section("Assign inspectors") {
+            Section(loc.t("Assign inspectors")) {
                 ForEach(kDisciplines, id: \.self) { d in
-                    Picker(disciplineLabel(d), selection: Binding(
+                    Picker(loc.t(disciplineLabel(d)), selection: Binding(
                         get: { picked[d] ?? "" },
                         set: { picked[d] = $0 })) {
-                        Text("— none —").tag("")
+                        Text(loc.t("— none —")).tag("")
                         ForEach(inspectors.filter { $0.discipline == d }) { i in
                             Text(i.name).tag(i.id)
                         }
                     }
                 }
-                Text("Pick an inspector for each discipline you need. Leave others as none.")
+                Text(loc.t("Pick an inspector for each discipline you need. Leave others as none."))
                     .font(.caption).foregroundStyle(.secondary)
             }
             if let error { Text(error).foregroundStyle(.red).font(.footnote) }
         }
-        .navigationTitle("Assign Team")
+        .navigationTitle(loc.t("Assign Team"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button(busy ? "Saving…" : "Save") { Task { await save() } }
+                Button(busy ? loc.t("Saving…") : loc.t("Save")) { Task { await save() } }
                     .disabled(busy)
             }
         }
@@ -176,6 +178,7 @@ struct AssignTeamView: View {
 
 struct UsersView: View {
     @EnvironmentObject var auth: AuthStore
+    @EnvironmentObject var loc: Loc
     @State private var users: [UserRef] = []
     @State private var loading = true
     @State private var showAdd = false
@@ -192,16 +195,16 @@ struct UsersView: View {
                         HStack {
                             Text(u.name).font(.headline)
                             Spacer()
-                            StatusPill(text: u.role.capitalized,
+                            StatusPill(text: loc.t(u.role.capitalized),
                                        tone: u.role == "ADMIN" ? .issue : u.role == "MANAGER" ? .brand : .neutral)
                         }
                         Text(u.email).font(.subheadline).foregroundStyle(.secondary)
-                        if let d = u.discipline { Text(disciplineLabel(d)).font(.caption).foregroundStyle(.secondary) }
+                        if let d = u.discipline { Text(loc.t(disciplineLabel(d))).font(.caption).foregroundStyle(.secondary) }
                     }.padding(.vertical, 2)
                 }
             }
         }
-        .navigationTitle("Team")
+        .navigationTitle(loc.t("Team"))
         .toolbar {
             if canAdd {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -223,6 +226,7 @@ struct UsersView: View {
 struct AddUserView: View {
     let onDone: () -> Void
     @EnvironmentObject var auth: AuthStore
+    @EnvironmentObject var loc: Loc
     @Environment(\.dismiss) private var dismiss
 
     @State private var name = ""
@@ -240,32 +244,32 @@ struct AddUserView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Account") {
-                    TextField("Name", text: $name)
-                    TextField("Email", text: $email)
+                Section(loc.t("Account")) {
+                    TextField(loc.t("Name"), text: $name)
+                    TextField(loc.t("Email"), text: $email)
                         .textInputAutocapitalization(.never).keyboardType(.emailAddress)
-                    SecureField("Password (min 6)", text: $password)
+                    SecureField(loc.t("Password (min 6)"), text: $password)
                 }
-                Section("Role") {
-                    Picker("Role", selection: $role) {
-                        Text("Inspector").tag("INSPECTOR")
-                        Text("Manager").tag("MANAGER")
-                        Text("Admin").tag("ADMIN")
+                Section(loc.t("Role")) {
+                    Picker(loc.t("Role"), selection: $role) {
+                        Text(loc.t("Inspector")).tag("INSPECTOR")
+                        Text(loc.t("Manager")).tag("MANAGER")
+                        Text(loc.t("Admin")).tag("ADMIN")
                     }
                     if role == "INSPECTOR" {
-                        Picker("Discipline", selection: $discipline) {
-                            ForEach(kDisciplines, id: \.self) { Text(disciplineLabel($0)).tag($0) }
+                        Picker(loc.t("Discipline"), selection: $discipline) {
+                            ForEach(kDisciplines, id: \.self) { Text(loc.t(disciplineLabel($0))).tag($0) }
                         }
                     }
                 }
                 if let error { Text(error).foregroundStyle(.red).font(.footnote) }
             }
-            .navigationTitle("Add User")
+            .navigationTitle(loc.t("Add User"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(loc.t("Cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(busy ? "…" : "Create") { Task { await create() } }
+                    Button(busy ? "…" : loc.t("Create")) { Task { await create() } }
                         .disabled(!valid || busy)
                 }
             }

@@ -3,10 +3,15 @@ import SwiftUI
 @main
 struct CheckApp: App {
     @StateObject private var auth = AuthStore()
+    @StateObject private var loc = Loc.shared
 
     var body: some Scene {
         WindowGroup {
-            RootView().environmentObject(auth)
+            RootView()
+                .environmentObject(auth)
+                .environmentObject(loc)
+                .environment(\.locale, loc.locale)
+                .environment(\.layoutDirection, loc.isRTL ? .rightToLeft : .leftToRight)
         }
     }
 }

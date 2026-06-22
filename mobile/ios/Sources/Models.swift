@@ -45,7 +45,7 @@ struct InspectionSummary: Codable, Identifiable {
     var issuesCount: Int?
 }
 
-struct Photo: Codable, Identifiable { let id: String; let url: String }
+struct Photo: Codable, Identifiable { let id: String; let url: String; var note: String? }
 
 struct Item: Codable, Identifiable {
     let id: String

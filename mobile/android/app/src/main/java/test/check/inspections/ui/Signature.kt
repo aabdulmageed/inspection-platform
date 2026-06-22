@@ -27,7 +27,7 @@ fun SignatureDialog(onDismiss: () -> Unit, onSave: (String) -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(shape = MaterialTheme.shapes.large) {
             Column(Modifier.padding(16.dp)) {
-                Text("Sign", style = MaterialTheme.typography.titleMedium)
+                Text(tr("Sign"), style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
                 Canvas(
                     Modifier.fillMaxWidth().height(220.dp).background(Color.White)
@@ -47,11 +47,11 @@ fun SignatureDialog(onDismiss: () -> Unit, onSave: (String) -> Unit) {
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                    TextButton(onClick = { strokes.clear() }) { Text("Clear") }
+                    TextButton(onClick = { strokes.clear() }) { Text(tr("Clear")) }
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    TextButton(onClick = onDismiss) { Text(tr("Cancel")) }
                     Button(onClick = { onSave(rasterize(strokes, size)) },
-                        enabled = strokes.isNotEmpty()) { Text("Save") }
+                        enabled = strokes.isNotEmpty()) { Text(tr("Save")) }
                 }
             }
         }

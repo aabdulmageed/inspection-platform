@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.*
 import test.check.inspections.data.Backend
@@ -15,8 +17,16 @@ import test.check.inspections.ui.*
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Loc.init(applicationContext)
         val backend = Backend(applicationContext)
-        setContent { MaterialTheme(colorScheme = brandColors()) { App(backend) } }
+        setContent {
+            // Mirror the whole UI right-to-left in Arabic; recomposes on switch.
+            CompositionLocalProvider(
+                LocalLayoutDirection provides if (Loc.isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
+            ) {
+                MaterialTheme(colorScheme = brandColors()) { App(backend) }
+            }
+        }
     }
 }
 

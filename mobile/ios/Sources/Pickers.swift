@@ -20,6 +20,7 @@ struct PendingPhoto: Identifiable {
 struct PhotoAnnotateView: View {
     let image: UIImage
     let onSave: (Data) -> Void
+    @EnvironmentObject var loc: Loc
     @Environment(\.dismiss) private var dismiss
     @State private var canvas = PKCanvasView()
     @State private var displaySize: CGSize = .zero
@@ -38,15 +39,15 @@ struct PhotoAnnotateView: View {
                 .onAppear { displaySize = size }
             }
             .background(Color.black)
-            .navigationTitle("Mark the issue")
+            .navigationTitle(loc.t("Mark the issue"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Clear") { canvas.drawing = PKDrawing() }
+                    Button(loc.t("Clear")) { canvas.drawing = PKDrawing() }
                 }
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(loc.t("Cancel")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Use photo") { save() }.bold()
+                    Button(loc.t("Use photo")) { save() }.bold()
                 }
             }
         }
@@ -121,6 +122,7 @@ struct MapPickerView: View {
     var initial: CLLocationCoordinate2D?
     var onPick: (_ coordinate: CLLocationCoordinate2D, _ address: String?) -> Void
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var loc: Loc
 
     /// Default view centers on Baghdad.
     static let baghdad = CLLocationCoordinate2D(latitude: 33.3152, longitude: 44.3661)
@@ -162,23 +164,23 @@ struct MapPickerView: View {
                     } else if let address {
                         Text(address).font(.footnote).multilineTextAlignment(.center)
                     } else {
-                        Text("Tap the map to drop a pin").font(.footnote).foregroundStyle(.secondary)
+                        Text(loc.t("Tap the map to drop a pin")).font(.footnote).foregroundStyle(.secondary)
                     }
                     Text(String(format: "%.5f, %.5f", pin.latitude, pin.longitude))
                         .font(.caption).foregroundStyle(.secondary)
                     Button {
                         onPick(pin, address); dismiss()
                     } label: {
-                        Text("Use this location").bold().frame(maxWidth: .infinity)
+                        Text(loc.t("Use this location")).bold().frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent).tint(.brandNavy)
                 }
                 .padding().frame(maxWidth: .infinity).background(.ultraThinMaterial)
             }
-            .navigationTitle("Pick location")
+            .navigationTitle(loc.t("Pick location"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(loc.t("Cancel")) { dismiss() } }
             }
             .task { await reverse(pin) }
         }

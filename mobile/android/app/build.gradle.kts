@@ -19,11 +19,9 @@ android {
         // (Wi-Fi DNS = Mac LAN IP) and the Mac's :443 forwarder. The CRC ingress
         // CA is bundled (res/raw/crc_ca.crt) and trusted via network_security_config.
         // (Emulator alternative: "http://10.0.2.2:4000/".)
-        //
-        // PRODUCTION (Azure/AKS): set this to "https://inspection-api.<your-domain>/".
-        // It has a real Let's Encrypt cert, so the bundled crc_ca.crt trust-anchor
-        // is no longer required (the system anchors cover it).
-        buildConfigField("String", "API_BASE_URL", "\"https://inspection-api.apps-crc.testing/\"")
+        // Production (Azure/AKS) — real Let's Encrypt cert; system trust anchors
+        // cover it, so no bundled CA needed.
+        buildConfigField("String", "API_BASE_URL", "\"https://api.gocheckpro.com/\"")
     }
     buildTypes {
         release { isMinifyEnabled = false }

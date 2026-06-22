@@ -5,6 +5,7 @@ import PencilKit
 struct SignatureView: View {
     let title: String
     let onSave: (String) -> Void
+    @EnvironmentObject var loc: Loc
     @Environment(\.dismiss) private var dismiss
     @State private var canvas = PKCanvasView()
 
@@ -22,9 +23,9 @@ struct SignatureView: View {
             .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Clear") { canvas.drawing = PKDrawing() } }
+                ToolbarItem(placement: .topBarLeading) { Button(loc.t("Clear")) { canvas.drawing = PKDrawing() } }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
+                    Button(loc.t("Save")) {
                         let rect = canvas.bounds.isEmpty ? CGRect(x: 0, y: 0, width: 600, height: 240) : canvas.bounds
                         let img = canvas.drawing.image(from: rect, scale: 2)
                         if let data = img.pngData() {
