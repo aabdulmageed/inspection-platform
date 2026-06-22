@@ -208,39 +208,19 @@ export class InspectionsService {
   }
 
   /**
-   * Assign an inspector for a discipline, then build that discipline's
-   * checklist items from the template.
+   * Assign an inspector for a discipline. The inspection starts with no rooms or
+   * checks — each inspector builds their own rooms and checks on site (via the
+   * web or the mobile apps), so no checklist template is auto-applied here.
    */
   async assign(tenantId: string, inspectionId: string, inspectorId: string, discipline: Discipline) {
     const inspection = await this.prisma.inspection.findFirst({ where: { id: inspectionId, tenantId } });
     if (!inspection) throw new NotFoundException("Inspection not found");
 
-    const assignment = await this.prisma.assignment.upsert({
+    return this.prisma.assignment.upsert({
       where: { inspectionId_discipline: { inspectionId, discipline } },
       update: { inspectorId },
       create: { inspectionId, inspectorId, discipline },
     });
-
-    const template = await this.prisma.checklistTemplate.findUnique({
-      where: { tenantId_inspectionType_discipline: { tenantId, inspectionType: inspection.type, discipline } },
-    });
-    if (template) {
-      const rows = template.itemsJson as { room: string; components: string[] }[];
-      for (const { room: roomName, components } of rows) {
-        const room =
-          (await this.prisma.room.findFirst({ where: { inspectionId, name: roomName } })) ??
-          (await this.prisma.room.create({ data: { inspectionId, name: roomName } }));
-        const existing = await this.prisma.item.findMany({ where: { roomId: room.id, discipline } });
-        const have = new Set(existing.map((i) => i.component));
-        const toAdd = components.filter((c) => !have.has(c));
-        if (toAdd.length) {
-          await this.prisma.item.createMany({
-            data: toAdd.map((component) => ({ roomId: room.id, discipline, component })),
-          });
-        }
-      }
-    }
-    return assignment;
   }
 
   /** Once a report is approved (COMPLETED) or issued (REPORTED) it is locked. */
