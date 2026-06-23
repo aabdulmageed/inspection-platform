@@ -141,6 +141,16 @@ export class InspectionsController {
     return this.svc.addItem(user, roomId, b.component, b.discipline);
   }
 
+  @Delete("rooms/:roomId")
+  deleteRoom(@CurrentUser() user: AuthUser, @Param("roomId") roomId: string) {
+    return this.svc.deleteRoom(user, roomId);
+  }
+
+  @Delete("items/:itemId")
+  deleteItem(@CurrentUser() user: AuthUser, @Param("itemId") itemId: string) {
+    return this.svc.deleteItem(user, itemId);
+  }
+
   @Patch("items/:itemId")
   updateItem(@CurrentUser() user: AuthUser, @Param("itemId") itemId: string, @Body() b: UpdateItemBody) {
     return this.svc.updateItem(user, itemId, b);

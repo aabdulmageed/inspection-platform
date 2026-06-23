@@ -411,6 +411,42 @@ export class InspectionsService {
     return this.prisma.item.create({ data: { roomId, discipline: disc, component }, include: { photos: true } });
   }
 
+  /** Delete a room and everything in it (checks + photos cascade). */
+  async deleteRoom(user: AuthUser, roomId: string) {
+    const room = await this.prisma.room.findUnique({
+      where: { id: roomId },
+      include: { inspection: true, items: { include: { photos: true } } },
+    });
+    if (!room || room.inspection.tenantId !== user.tenantId) throw new NotFoundException("Room not found");
+    await this.assertNotLocked(room.inspectionId);
+    if (user.role === "INSPECTOR") {
+      const assigned = await this.prisma.assignment.findFirst({
+        where: { inspectionId: room.inspectionId, inspectorId: user.sub },
+      });
+      if (!assigned) throw new ForbiddenException("Not assigned to this inspection");
+    }
+    // Best-effort blob cleanup before the DB cascade drops the photo rows.
+    for (const it of room.items) for (const p of it.photos) await this.storage.deleteByUrl(p.url).catch(() => {});
+    await this.prisma.room.delete({ where: { id: roomId } });
+    return { deleted: true };
+  }
+
+  /** Delete a check (and its photos cascade). Inspectors only their own discipline. */
+  async deleteItem(user: AuthUser, itemId: string) {
+    const item = await this.prisma.item.findUnique({
+      where: { id: itemId },
+      include: { room: true, photos: true },
+    });
+    if (!item) throw new NotFoundException("Check not found");
+    await this.assertNotLocked(item.room.inspectionId);
+    if (user.role === "INSPECTOR" && user.discipline !== item.discipline) {
+      throw new ForbiddenException("Cannot delete another discipline's check");
+    }
+    for (const p of item.photos) await this.storage.deleteByUrl(p.url).catch(() => {});
+    await this.prisma.item.delete({ where: { id: itemId } });
+    return { deleted: true };
+  }
+
   /** Remove a photo (e.g. a bad shot) — same ownership rules as editing the item. */
   async deletePhoto(user: AuthUser, photoId: string) {
     const photo = await this.prisma.photo.findUnique({
