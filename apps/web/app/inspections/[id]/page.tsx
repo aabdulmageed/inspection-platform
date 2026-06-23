@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, FileDown, ImagePlus, MapPin, Mail, PenLine, Lock, CalendarDays, Plus, Camera } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileDown, ImagePlus, MapPin, Mail, PenLine, Lock, CalendarDays, Plus, Camera, Trash2 } from "lucide-react";
 import { useI18n } from "../../../lib/i18n";
 import { useAuth } from "../../../lib/auth";
 import { useToast } from "../../../components/ui/Toast";
@@ -193,6 +193,35 @@ export default function InspectionDetail() {
     toast(t("check.add") + " ✓");
   }
 
+  async function deleteRoom(roomId: string) {
+    const ok = await confirmDialog({
+      message: t("room.confirmDelete"),
+      confirmLabel: t("common.delete"),
+      cancelLabel: t("common.cancel"),
+    });
+    if (!ok) return;
+    const res = await authedFetch(`/rooms/${roomId}`, { method: "DELETE" });
+    if (!res.ok) return toast(t("login.error"), "error");
+    setData((d) => (d ? { ...d, rooms: d.rooms.filter((r) => r.id !== roomId) } : d));
+    if (activeRoomId === roomId) setActiveRoomId(null);
+    toast(t("common.delete") + " ✓");
+  }
+
+  async function deleteCheck(item: Item) {
+    const ok = await confirmDialog({
+      message: t("check.confirmDelete"),
+      confirmLabel: t("common.delete"),
+      cancelLabel: t("common.cancel"),
+    });
+    if (!ok) return;
+    const res = await authedFetch(`/items/${item.id}`, { method: "DELETE" });
+    if (!res.ok) return toast(t("login.error"), "error");
+    setData((d) =>
+      d ? { ...d, rooms: d.rooms.map((r) => ({ ...r, items: r.items.filter((it) => it.id !== item.id) })) } : d,
+    );
+    toast(t("common.delete") + " ✓");
+  }
+
   async function emailReport() {
     setEmailing(true);
     const res = await authedFetch(`/inspections/${id}/email-report?lang=${lang}`, { method: "POST" });
@@ -367,21 +396,45 @@ export default function InspectionDetail() {
       {/* Active room's checks */}
       {activeRoom && (
         <div key={activeRoom.id} className="grid gap-2">
-          <div className="bg-brand-gradient text-white font-bold px-4 py-2 rounded-lg">{activeRoom.name}</div>
+          <div className="bg-brand-gradient text-white font-bold px-4 py-2 rounded-lg flex items-center justify-between gap-2">
+            <span className="truncate">{activeRoom.name}</span>
+            {canContribute && (
+              <button
+                onClick={() => deleteRoom(activeRoom.id)}
+                aria-label={t("room.delete")}
+                title={t("room.delete")}
+                className="shrink-0 grid place-items-center h-7 w-7 rounded-lg text-white/80 hover:bg-white/20 transition"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
           {activeRoom.items.map((item) => (
             <Card key={item.id} className={`p-4 ${item.status === "ISSUE" ? "border-t-[3px] border-t-issue" : ""}`}>
               <div className="flex items-center justify-between gap-3">
-                <div className="font-semibold">
+                <div className="font-semibold min-w-0">
                   {item.component} <span className="text-xs text-muted font-normal">· {t(`discipline.${item.discipline}`)}</span>
                 </div>
-                <Select
-                  value={item.status ?? ""}
-                  disabled={!canEdit(item)}
-                  onChange={(e) => patchItem(item, { status: e.target.value })}
-                  className={`w-auto! py-1.5! font-bold ${item.status === "ISSUE" ? "text-issue" : item.status === "GOOD" ? "text-good" : ""}`}
-                >
-                  {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`itemStatus.${s}`)}</option>)}
-                </Select>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Select
+                    value={item.status ?? ""}
+                    disabled={!canEdit(item)}
+                    onChange={(e) => patchItem(item, { status: e.target.value })}
+                    className={`w-auto! py-1.5! font-bold ${item.status === "ISSUE" ? "text-issue" : item.status === "GOOD" ? "text-good" : ""}`}
+                  >
+                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{t(`itemStatus.${s}`)}</option>)}
+                  </Select>
+                  {canEdit(item) && (
+                    <button
+                      onClick={() => deleteCheck(item)}
+                      aria-label={t("check.delete")}
+                      title={t("check.delete")}
+                      className="grid place-items-center h-8 w-8 rounded-lg text-muted hover:text-issue hover:bg-issue/10 transition"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
               <input
                 defaultValue={item.note ?? ""}
